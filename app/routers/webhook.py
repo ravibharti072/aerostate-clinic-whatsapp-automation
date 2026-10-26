@@ -86,6 +86,7 @@ def verify_meta_webhook_signature(payload_bytes: bytes, signature_header: Option
 
 
 @router.get("/webhook")
+@router.get("/api/webhook")
 async def verify_webhook(
     hub_mode: str = Query(None, alias="hub.mode"),
     hub_challenge: str = Query(None, alias="hub.challenge"),
@@ -110,6 +111,7 @@ async def verify_webhook(
 
 
 @router.post("/webhook")
+@router.post("/api/webhook")
 async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     """
     Message Receiver endpoint.
