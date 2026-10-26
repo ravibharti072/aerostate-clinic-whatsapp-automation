@@ -37,9 +37,19 @@ class WhatsAppClient:
         pid = phone_number_id or settings.PHONE_NUMBER_ID
 
         if not auth_token or auth_token.startswith("YOUR_"):
-            return {"success": False, "error": "WhatsApp Access Token is not configured."}
+            return {
+                "success": False,
+                "status": "error",
+                "message": "WhatsApp Access Token is missing. Please enter your Meta token and save.",
+                "error": "WhatsApp Access Token is not configured.",
+            }
         if not pid or pid.startswith("YOUR_"):
-            return {"success": False, "error": "Phone Number ID is not configured."}
+            return {
+                "success": False,
+                "status": "error",
+                "message": "Phone Number ID is missing. Please enter your Meta Phone Number ID and save.",
+                "error": "Phone Number ID is not configured.",
+            }
 
         url = f"https://graph.facebook.com/{settings.META_GRAPH_VERSION}/{pid}"
         try:
@@ -47,18 +57,32 @@ class WhatsAppClient:
                 res = await client.get(url, headers=self.get_headers(auth_token))
                 data = res.json()
                 if res.status_code == 200:
+                    disp_num = data.get("display_phone_number", pid)
+                    v_name = data.get("verified_name", "Verified")
                     return {
                         "success": True,
-                        "display_phone_number": data.get("display_phone_number"),
-                        "verified_name": data.get("verified_name"),
+                        "status": "ok",
+                        "message": f"Connected to Meta! Verified Phone: {disp_num} ({v_name})",
+                        "display_phone_number": disp_num,
+                        "verified_name": v_name,
                         "quality_rating": data.get("quality_rating"),
                         "id": data.get("id"),
                     }
                 else:
                     err_msg = data.get("error", {}).get("message", f"Meta API Error (HTTP {res.status_code})")
-                    return {"success": False, "error": err_msg}
+                    return {
+                        "success": False,
+                        "status": "error",
+                        "message": err_msg,
+                        "error": err_msg,
+                    }
         except Exception as e:
-            return {"success": False, "error": str(e)}
+            return {
+                "success": False,
+                "status": "error",
+                "message": str(e),
+                "error": str(e),
+            }
 
     async def _send_payload(
         self,

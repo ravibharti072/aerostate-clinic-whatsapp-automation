@@ -205,12 +205,18 @@ export default function SettingsView() {
     try {
       setTestingMeta(true);
       setTestResult(null);
-      const res = await testMetaConnection();
-      setTestResult(res);
-      if (res.status === "ok") {
-        showToast("Meta Cloud API connection validated!", "success");
+      const res = await testMetaConnection({
+        phone_number_id: formData.phone_number_id,
+        whatsapp_token: formData.whatsapp_token,
+      });
+      const isOk = res.status === "ok" || res.success === true;
+      const msg = res.message || res.error || (isOk ? "Meta Cloud API connection validated!" : "Connection failed");
+      const normalizedResult = { ...res, status: isOk ? "ok" : "error", message: msg };
+      setTestResult(normalizedResult);
+      if (isOk) {
+        showToast(msg, "success");
       } else {
-        showToast(`API Ping Failed: ${res.message}`, "error");
+        showToast(`API Ping Failed: ${msg}`, "error");
       }
     } catch (err) {
       setTestResult({

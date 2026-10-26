@@ -442,10 +442,11 @@ export async function updateSettings(payload) {
   return res.json();
 }
 
-export async function testMetaConnection() {
+export async function testMetaConnection(payload = {}) {
   const res = await fetch(`${BASE_URL}/admin/settings/test-meta`, {
     method: "POST",
     headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
   });
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));

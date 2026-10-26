@@ -1034,10 +1034,17 @@ def update_system_settings(payload: SettingsUpdateRequest):
     return {"message": "Settings updated successfully", "status": "ok"}
 
 
+class MetaTestRequest(BaseModel):
+    phone_number_id: Optional[str] = None
+    whatsapp_token: Optional[str] = None
+
+
 @router.post("/settings/test-meta")
-async def test_meta_connection():
+async def test_meta_connection(payload: Optional[MetaTestRequest] = None):
     """Live connectivity verification with Meta WhatsApp Cloud API."""
-    return await whatsapp_client.test_connection()
+    pid = (payload.phone_number_id.strip() if payload and payload.phone_number_id else None)
+    token = (payload.whatsapp_token.strip() if payload and payload.whatsapp_token else None)
+    return await whatsapp_client.test_connection(phone_number_id=pid, token=token)
 
 
 # ----------------------------------------------------
