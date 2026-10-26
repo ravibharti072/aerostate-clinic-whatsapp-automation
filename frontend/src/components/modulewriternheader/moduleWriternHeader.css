@@ -1,0 +1,113 @@
+.module-writern-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 4px;
+  gap: 16px;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.module-writern-info {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  flex: 1;
+}
+
+.module-writern-title-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.module-writern-header h3 {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.module-writern-header p {
+  margin: 4px 0 0 0;
+  font-size: 13px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+.module-writern-right {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.module-writern-subbadge {
+  font-size: 11px;
+  font-weight: 700;
+  color: #166962;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.module-writern-badge {
+  background: #eff6ff;
+  color: #3b82f6;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 4px 12px;
+  border-radius: 20px;
+  white-space: nowrap;
+}
+
+.module-writern-badge.mobile-inline-badge {
+  display: none;
+}
+
+.module-writern-badge.desktop-badge {
+  display: inline-block;
+}
+
+/* Responsiveness for the header */
+@media (max-width: 768px) {
+  .module-writern-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 0;
+  }
+
+  .module-writern-title-line {
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .module-writern-badge.mobile-inline-badge {
+    display: inline-block;
+    padding: 3px 9px;
+    font-size: 11px;
+  }
+
+  .module-writern-badge.desktop-badge {
+    display: none;
+  }
+
+  .module-writern-right {
+    width: 100%;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .module-writern-header h3 {
+    font-size: 16px;
+  }
+
+  .module-writern-header p {
+    font-size: 12px;
+  }
+}

@@ -1,0 +1,96 @@
+/* Aerostate Lab Signature Logo Style & Micro-interactions */
+
+.aerostate-logo-mark {
+  position: relative;
+  flex: none;
+  display: inline-block;
+  box-sizing: border-box;
+  background: transparent !important;
+  background-color: transparent !important;
+  overflow: visible !important;
+}
+
+/* Size Variants */
+.aerostate-logo-sm {
+  width: 24px;
+  height: 24px;
+}
+
+.aerostate-logo-md {
+  width: 32px;
+  height: 32px;
+}
+
+.aerostate-logo-lg {
+  width: 48px;
+  height: 48px;
+}
+
+/* Base Blocks */
+.aerostate-logo-block {
+  position: absolute;
+  border-radius: 2px;
+  transition: transform 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  box-sizing: border-box;
+}
+
+.aerostate-logo-sm .aerostate-logo-block {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
+}
+
+.aerostate-logo-md .aerostate-logo-block {
+  width: 16px;
+  height: 16px;
+  border-radius: 2px;
+}
+
+.aerostate-logo-lg .aerostate-logo-block {
+  width: 24px;
+  height: 24px;
+  border-radius: 3px;
+}
+
+/* Top-Left: #254d90 (Navy/Blue) */
+.aerostate-logo-block.block-top-left {
+  left: 0;
+  top: 0;
+  z-index: 1;
+  background-color: #254d90;
+  box-shadow: 0 10px 15px -3px rgba(37, 77, 144, 0.5), 0 4px 6px -4px rgba(37, 77, 144, 0.5);
+}
+
+/* Bottom-Right: #126868 (Teal/Emerald) */
+.aerostate-logo-block.block-bottom-right {
+  bottom: 0;
+  right: 0;
+  z-index: 1;
+  background-color: #126868;
+  box-shadow: 0 10px 15px -3px rgba(18, 104, 104, 0.5), 0 4px 6px -4px rgba(18, 104, 104, 0.5);
+}
+
+/* Bottom-Left: #79808d (Slate Gray) */
+.aerostate-logo-block.block-bottom-left {
+  bottom: 0;
+  left: 0;
+  z-index: 10;
+  background-color: #79808d;
+  box-shadow: 0 10px 15px -3px rgba(121, 128, 141, 0.3), 0 4px 6px -4px rgba(121, 128, 141, 0.3);
+}
+
+.aerostate-logo-mark.interactive {
+  cursor: pointer;
+}
+
+.aerostate-logo-mark.interactive:hover .block-top-left {
+  transform: translateY(-2px);
+}
+
+.aerostate-logo-mark.interactive:hover .block-bottom-right {
+  transform: translateX(2px);
+}
+
+.aerostate-logo-mark.interactive:hover .block-bottom-left {
+  transform: translateY(2px);
+}

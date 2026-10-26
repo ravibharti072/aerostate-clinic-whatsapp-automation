@@ -1,0 +1,202 @@
+.stat-card {
+  position: relative;
+  overflow: hidden; /* Clips the SVG so it perfectly follows the border radius */
+  background: #ffffff;
+  padding: 24px;
+  border-radius: 16px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  width: 100%;
+  box-sizing: border-box;
+  min-height: 96px;
+  transition: all 0.2s ease;
+  z-index: 1;
+}
+
+.stat-card:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.04);
+  transform: translateY(-2px);
+}
+
+/* Elevate the text, icons, and pills above the graph line */
+.stat-icon-wrapper,
+.stat-info,
+.stat-trend {
+  position: relative;
+  z-index: 2;
+}
+
+.stat-icon-wrapper {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.stat-info {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
+}
+
+.stat-info p {
+  margin: 0 0 4px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #64748b;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.stat-info h2 {
+  margin: 0;
+  font-size: 24px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --- Trend Pill Styles --- */
+.stat-trend {
+  position: absolute;
+  top: 24px;
+  right: 24px;
+  padding: 4px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+
+.trend-positive { background: #ecfdf5; color: #059669; }
+.trend-negative { background: #fef2f2; color: #dc2626; }
+.trend-neutral { background: #f1f5f9; color: #64748b; }
+
+/* --- Graph Styles (Edge to Edge) --- */
+.stat-sparkline {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  height: 50%; /* Fills the bottom half of the card perfectly */
+  z-index: 1; 
+  pointer-events: none;
+  opacity: 0.8; /* Subtle blending */
+}
+
+/* --- Reusable Color Themes (Matching AeroState Logo Blue #254d90 & Teal #126868) --- */
+.bg-light-blue,
+.bg-light-brand-blue { 
+  background: rgba(37, 77, 144, 0.1) !important; 
+  border: 1px solid rgba(37, 77, 144, 0.2) !important;
+}
+.color-blue,
+.color-brand-blue { 
+  color: #254d90 !important; 
+}
+
+.bg-light-teal,
+.bg-light-brand-teal,
+.bg-light-green { 
+  background: rgba(18, 104, 104, 0.1) !important; 
+  border: 1px solid rgba(18, 104, 104, 0.2) !important;
+}
+.color-teal,
+.color-brand-teal,
+.color-green { 
+  color: #126868 !important; 
+}
+
+.bg-light-orange { background: #fff7ed; }
+.color-orange { color: #f97316; }
+
+.bg-light-purple { background: #fdf4ff; }
+.color-purple { color: #79808d; }
+
+.bg-light-whatsapp {
+  background: rgba(37, 211, 102, 0.12) !important;
+  border: 1px solid rgba(37, 211, 102, 0.25) !important;
+}
+.color-whatsapp {
+  color: #128c7e !important;
+}
+
+/* =========================================================
+   GLOBAL 2-BY-2 STAT CARDS ON MOBILE (2 CARDS PER ROW)
+   ========================================================= */
+@media (max-width: 900px) {
+  .dir-stats-grid,
+  .lrs-dashboard-stats-grid,
+  .onboard-client-scope .dir-stats-grid,
+  .subscriptions-scope .dir-stats-grid,
+  .wallets-scope .dir-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+    width: 100% !important;
+  }
+
+  .stat-card,
+  .lrs-stat-card {
+    padding: 10px 10px !important;
+    gap: 8px !important;
+    border-radius: 12px !important;
+    min-height: 68px !important;
+    min-width: 0 !important;
+  }
+
+  .stat-icon-wrapper,
+  .lrs-stat-icon {
+    width: 36px !important;
+    height: 36px !important;
+    border-radius: 9px !important;
+    flex-shrink: 0 !important;
+  }
+
+  .stat-icon-wrapper svg,
+  .lrs-stat-icon svg {
+    width: 17px !important;
+    height: 17px !important;
+  }
+
+  .stat-info,
+  .lrs-stat-content {
+    min-width: 0 !important;
+    flex: 1 !important;
+  }
+
+  .stat-info p,
+  .lrs-stat-label {
+    font-size: 10.5px !important;
+    margin: 0 0 2px 0 !important;
+    line-height: 1.2 !important;
+    white-space: normal !important;
+    word-break: break-word !important;
+  }
+
+  .stat-info h2,
+  .lrs-stat-value {
+    font-size: 17px !important;
+    line-height: 1.1 !important;
+    margin: 0 !important;
+  }
+
+  .stat-trend {
+    top: 8px !important;
+    right: 8px !important;
+    padding: 2px 6px !important;
+    font-size: 9px !important;
+  }
+}

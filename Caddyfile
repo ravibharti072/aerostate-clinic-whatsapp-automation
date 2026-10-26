@@ -1,0 +1,36 @@
+# ========================================================
+# Aerostate Clinic - Production Caddy Web Server Configuration
+# Automatic HTTPS, Reverse Proxy, Compression, and SSL Management
+# ========================================================
+
+# Replace 'clinic.yourdomain.com' with your actual production domain name,
+# or keep ':443' / 'localhost' for local secure testing.
+clinic.yourdomain.com {
+    # Automatic HTTPS (ZeroSSL / Let's Encrypt)
+    # email admin@yourdomain.com
+
+    # Reverse proxy all traffic to the FastAPI application backend
+    reverse_proxy 127.0.0.1:8000 {
+        # Preserve original client IP and host for rate limiting
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+
+        # Health checks
+        health_uri /api/health
+        health_interval 30s
+        health_timeout 5s
+    }
+
+    # Enable compression for frontend static assets
+    encode zstd gzip
+
+    # Logging
+    log {
+        output file logs/caddy_access.log {
+            roll_size 10MB
+            roll_keep 10
+        }
+    }
+}

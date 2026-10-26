@@ -1,0 +1,256 @@
+/* AeroState Portal Header Style (Exact Match to aerostate-hr-accounts-system) */
+
+/* Card Container */
+.portal-header-card,
+.rm-header-card {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 18px 28px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.02);
+  border: 1px solid #eef2f6;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+/* Left Content Section */
+.portal-header-left,
+.rm-header-left {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center !important;
+  gap: 24px !important;
+  flex: 1;
+  min-width: 0;
+}
+
+/* Back Button (Brand Blue: #2d5696) */
+.portal-back-btn,
+.rm-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(45, 86, 150, 0.08);
+  color: #2d5696;
+  border: none;
+  padding: 10px 16px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  flex-shrink: 0;
+}
+
+.portal-back-btn:hover,
+.rm-back-btn:hover {
+  background: rgba(45, 86, 150, 0.15);
+}
+
+/* Header Icon Container (Brand Blue: #2d5696) */
+.portal-header-icon-box,
+.rm-header-icon-box {
+  width: 56px;
+  height: 56px;
+  background: rgba(45, 86, 150, 0.08);
+  color: #2d5696;
+  border-radius: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+/* Titles & Descriptions */
+.portal-header-text,
+.rm-header-text {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.portal-kicker,
+.rm-kicker {
+  font-size: 11px;
+  font-weight: 800;
+  color: #2d5696;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.portal-header-text h1,
+.rm-header-text h1 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+  color: #0f172a;
+  line-height: 1.2;
+}
+
+.portal-header-text p,
+.rm-header-text p {
+  margin: 0;
+  font-size: 14px;
+  color: #64748b;
+  line-height: 1.4;
+}
+
+/* Right Section & Action Buttons */
+.portal-header-right,
+.rm-header-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 14px !important;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+}
+
+/* Live Date & Time Widget in Header */
+.portal-header-time-widget {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: #f8fafc;
+  padding: 8px 14px;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  white-space: nowrap;
+  flex-shrink: 0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+}
+
+.portal-time-icon-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(45, 86, 150, 0.08);
+  color: #2d5696;
+  flex-shrink: 0;
+}
+
+.portal-time-text {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  line-height: 1.25;
+}
+
+.portal-time-date {
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+}
+
+.portal-time-clock {
+  font-size: 14px;
+  font-weight: 800;
+  color: #0f172a;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.2px;
+}
+
+/* Brand Teal Action Button (#166962) - Compact, refined uniform height (34px) */
+.portal-action-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 6px !important;
+  background: #166962 !important;
+  color: #ffffff !important;
+  border: none !important;
+  padding: 0 14px !important;
+  height: 34px !important;
+  box-sizing: border-box !important;
+  border-radius: 7px !important;
+  font-weight: 600 !important;
+  font-size: 12.5px !important;
+  font-family: inherit !important;
+  cursor: pointer !important;
+  transition: background 0.15s ease, transform 0.1s ease !important;
+  white-space: nowrap !important;
+  line-height: 1 !important;
+}
+
+.portal-action-btn:hover {
+  background: #0f4b46 !important;
+}
+
+.portal-action-btn:disabled {
+  opacity: 0.6 !important;
+  cursor: not-allowed !important;
+}
+
+.portal-action-btn-blue {
+  background: #254d90 !important;
+}
+
+.portal-action-btn-blue:hover {
+  background: #1d3d74 !important;
+}
+
+.portal-refresh-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  background: #ffffff !important;
+  border: 1px solid #cbd5e1 !important;
+  color: #334155 !important;
+  width: 34px !important;
+  height: 34px !important;
+  min-width: 34px !important;
+  min-height: 34px !important;
+  padding: 0 !important;
+  border-radius: 7px !important;
+  cursor: pointer !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05) !important;
+  flex-shrink: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.portal-refresh-btn:hover:not(:disabled) {
+  background: #f8fafc !important;
+  border-color: #254d90 !important;
+  color: #254d90 !important;
+}
+
+/* Mobile Responsive */
+@media (max-width: 768px) {
+  .portal-header-card,
+  .rm-header-card {
+    padding: 16px 14px;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 14px;
+    border-radius: 12px;
+  }
+
+  .portal-header-left,
+  .rm-header-left {
+    flex-direction: row !important;
+    align-items: center !important;
+    gap: 14px !important;
+  }
+
+  .portal-header-icon-box {
+    width: 44px;
+    height: 44px;
+  }
+
+  .portal-header-text h1 {
+    font-size: 18px;
+  }
+
+  .portal-header-right {
+    width: 100%;
+    justify-content: flex-start;
+  }
+}
