@@ -221,8 +221,15 @@ def list_clinic_users(
     - Server-side pagination & offsets
     - All KPI statistics calculated directly on DB
     - Pre-computed display fields and boolean flags (no frontend calculation)
+    - SuperAdmin account is strictly concealed from non-SuperAdmin staff
     """
+    is_caller_superadmin = (current_admin.role or "").lower() == "superadmin"
+
     base_query = db.query(User)
+
+    # Strictly hide SuperAdmin accounts from regular clinic administrators and staff
+    if not is_caller_superadmin:
+        base_query = base_query.filter(func.lower(User.role) != "superadmin")
 
     if status and status.strip() and status.upper() != "ALL":
         if status.upper() == "ACTIVE":
@@ -233,7 +240,10 @@ def list_clinic_users(
     if role and role.strip() and role.upper() != "ALL":
         clean_role = role.strip().lower()
         if clean_role in ["admin", "superadmin", "client"]:
-            base_query = base_query.filter(func.lower(User.role).in_(["admin", "superadmin", "client"]))
+            if is_caller_superadmin:
+                base_query = base_query.filter(func.lower(User.role).in_(["admin", "superadmin", "client"]))
+            else:
+                base_query = base_query.filter(func.lower(User.role).in_(["admin", "client"]))
         elif clean_role in ["frontdesk", "receptionist"]:
             base_query = base_query.filter(func.lower(User.role).in_(["frontdesk", "receptionist"]))
         elif clean_role in ["pharma", "pharmacist"]:
@@ -259,14 +269,21 @@ def list_clinic_users(
     offset = (page - 1) * page_size
     users = base_query.order_by(User.created_at.desc()).offset(offset).limit(page_size).all()
 
-    # Pre-calculate whole-clinic KPI statistics on database
-    all_users = db.query(User).all()
+    # Pre-calculate whole-clinic KPI statistics on database (scoped by caller role)
+    all_users_query = db.query(User)
+    if not is_caller_superadmin:
+        all_users_query = all_users_query.filter(func.lower(User.role) != "superadmin")
+    all_users = all_users_query.all()
+
     total_count = len(all_users)
     active_count = sum(1 for u in all_users if u.is_active)
     doctors_count = sum(1 for u in all_users if (u.role or "").lower() == "doctor")
     frontdesk_count = sum(1 for u in all_users if (u.role or "").lower() in ["frontdesk", "receptionist"])
     pharma_count = sum(1 for u in all_users if (u.role or "").lower() in ["pharma", "pharmacist"])
-    admins_count = sum(1 for u in all_users if (u.role or "").lower() in ["admin", "superadmin", "client"])
+    admins_count = sum(
+        1 for u in all_users
+        if (u.role or "").lower() in (["admin", "superadmin", "client"] if is_caller_superadmin else ["admin", "client"])
+    )
 
     results = []
     for u in users:
@@ -478,7 +495,7 @@ def update_clinic_user(
     is_target_superadmin = (user.role or "").lower() == "superadmin"
     is_caller_superadmin = (current_admin.role or "").lower() == "superadmin"
     if is_target_superadmin and not is_caller_superadmin:
-        raise HTTPException(status_code=403, detail="SuperAdmin accounts can only be modified by a SuperAdmin.")
+        raise HTTPException(status_code=404, detail="User not found")
 
     # Prevent non-SuperAdmins from promoting any account to SuperAdmin
     if payload.role and payload.role.strip().lower() == "superadmin" and not is_caller_superadmin:
@@ -554,7 +571,7 @@ def toggle_user_status(
         raise HTTPException(status_code=404, detail="User not found")
 
     if (user.role or "").lower() == "superadmin" and (current_admin.role or "").lower() != "superadmin":
-        raise HTTPException(status_code=403, detail="SuperAdmin accounts can only be deactivated by a SuperAdmin.")
+        raise HTTPException(status_code=404, detail="User not found")
 
     if user.id == current_admin.id:
         raise HTTPException(status_code=400, detail="You cannot deactivate your own account.")
@@ -580,7 +597,7 @@ def reset_user_password(
         raise HTTPException(status_code=404, detail="User not found")
 
     if (user.role or "").lower() == "superadmin" and (current_admin.role or "").lower() != "superadmin":
-        raise HTTPException(status_code=403, detail="SuperAdmin passwords can only be reset by a SuperAdmin.")
+        raise HTTPException(status_code=404, detail="User not found")
 
     new_pass = payload.new_password.strip()
     if not new_pass or len(new_pass) < 8:
