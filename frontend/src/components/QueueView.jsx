@@ -19,7 +19,9 @@ import {
   FiFilter,
   FiLayers,
   FiFolder,
-  FiExternalLink
+  FiExternalLink,
+  FiList,
+  FiGrid
 } from "react-icons/fi";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
@@ -68,6 +70,7 @@ export default function QueueView() {
   // Search & Filter state (computed on backend)
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [desktopViewMode, setDesktopViewMode] = useState("table"); // 'table' | 'cards'
 
   // Cabins dynamic state (persisted in backend database)
   const [cabins, setCabins] = useState([]);
@@ -165,8 +168,11 @@ export default function QueueView() {
   };
 
   const handleSearchSubmit = (e) => {
-    e.preventDefault();
-    loadData({ search: searchTerm });
+    if (e && typeof e.preventDefault === "function") {
+      e.preventDefault();
+    }
+    const term = typeof e === "string" ? e : searchTerm;
+    loadData({ search: term });
   };
 
   const handleClearFilters = () => {
@@ -517,147 +523,147 @@ export default function QueueView() {
           }
         />
 
-        {/* Queue Filter Tabs & System Mode Desk Switcher (Positioned below Section Header & Description) */}
-        <div className="flex flex-wrap items-center justify-between gap-3">
-          {/* Queue Sub-Sections */}
-          <div className="wa-tabs-container">
+        {/* Queue Sub-Section Tabs (Style identical to Prescriptions & Consultations) */}
+        <div className="wa-tabs-container">
+          <button
+            type="button"
+            onClick={() => {
+              setQueueTab("active");
+              setCurrentPage(1);
+            }}
+            className={`wa-tab-btn ${queueTab === "active" ? "active" : ""}`}
+          >
+            <span>Active ({activeCount})</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setQueueTab("completed");
+              setCurrentPage(1);
+            }}
+            className={`wa-tab-btn ${queueTab === "completed" ? "active" : ""}`}
+          >
+            <span>Completed ({completedCount})</span>
+          </button>
+          {skippedCount > 0 && (
             <button
               type="button"
               onClick={() => {
-                setQueueTab("active");
+                setQueueTab("skipped");
                 setCurrentPage(1);
               }}
-              className={`wa-tab-btn ${queueTab === "active" ? "active" : ""}`}
+              className={`wa-tab-btn ${queueTab === "skipped" ? "active" : ""}`}
             >
-              <FiClock size={15} />
-              <span>Active Queue ({activeCount})</span>
+              <span>Skipped ({skippedCount})</span>
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setQueueTab("completed");
-                setCurrentPage(1);
-              }}
-              className={`wa-tab-btn ${queueTab === "completed" ? "active" : ""}`}
-            >
-              <FiCheckCircle size={15} />
-              <span>Completed ({completedCount})</span>
-            </button>
-            {skippedCount > 0 && (
-              <button
-                type="button"
-                onClick={() => {
-                  setQueueTab("skipped");
-                  setCurrentPage(1);
-                }}
-                className={`wa-tab-btn ${queueTab === "skipped" ? "active" : ""}`}
-              >
-                <FiAlertCircle size={15} />
-                <span>Skipped ({skippedCount})</span>
-              </button>
-            )}
-            <button
-              type="button"
-              onClick={() => {
-                setQueueTab("all");
-                setCurrentPage(1);
-              }}
-              className={`wa-tab-btn ${queueTab === "all" ? "active" : ""}`}
-            >
-              <FiUsers size={15} />
-              <span>All Tokens ({totalCount})</span>
-            </button>
-          </div>
-
-          {/* Separate Section Next to All Tokens: System Desk Mode (Front Desk / Doctor Desk) */}
-          <div className="flex items-center gap-2">
-            <div className="wa-tabs-container items-center">
-              <button
-                type="button"
-                onClick={() => handleModeChange("FRONT_DESK")}
-                className={`wa-tab-btn ${viewMode === "FRONT_DESK" ? "active" : ""}`}
-              >
-                <FiLayers size={14} />
-                <span>Front Desk</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => handleModeChange("DOCTOR")}
-                className={`wa-tab-btn ${viewMode === "DOCTOR" ? "active" : ""}`}
-              >
-                <FiUserCheck size={14} />
-                <span>Doctor Desk</span>
-              </button>
-
-              {viewMode === "DOCTOR" && (
-                <>
-                  <div className="h-6 w-px bg-slate-200 mx-1 self-center" />
-                  <div className="flex items-center gap-2 pl-1 pr-1">
-                    <span className="text-[13px] font-semibold text-slate-500 whitespace-nowrap">
-                      Doctor:
-                    </span>
-                    <select
-                      value={selectedDoctorId}
-                      onChange={(e) => handleDoctorChange(e.target.value)}
-                      className="font-semibold text-slate-800 text-[13px] bg-slate-50 hover:bg-slate-100 px-3 py-1.5 rounded-md border border-slate-200 outline-none cursor-pointer transition"
-                      style={{
-                        height: "36px",
-                        minWidth: "220px",
-                        fontSize: "13px",
-                        fontWeight: "600",
-                      }}
-                    >
-                      {doctors.map((d) => (
-                        <option key={d.id} value={d.id}>
-                          {d.name} ({d.specialization || "Doctor"})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          )}
+          <button
+            type="button"
+            onClick={() => {
+              setQueueTab("all");
+              setCurrentPage(1);
+            }}
+            className={`wa-tab-btn ${queueTab === "all" ? "active" : ""}`}
+          >
+            <span>All Tokens ({totalCount})</span>
+          </button>
         </div>
 
         {/* CONTROLS & TOOLBAR */}
         <div className="dir-controls">
           <SearchBar
-            placeholder="Search by Token (e.g. #01), Patient ID, Name, or Doctor..."
+            placeholder="Search token, patient ID, name, doctor..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             onSearch={handleSearchSubmit}
+            onClear={handleClearFilters}
           />
 
           <div className="dir-toolbar-right">
-            <select
-              className="dir-filter-select"
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-            >
-              <option value="">All Statuses</option>
-              <option value="WAITING">Waiting in Lobby</option>
-              <option value="CALLED">Called / Notified</option>
-              <option value="IN_CONSULTATION">In Consultation</option>
-              <option value="COMPLETED">Completed</option>
-              <option value="SKIPPED">Skipped</option>
-            </select>
+            {/* Desk Mode Switcher (Front Desk / Doctor Desk) */}
+            <div className="hidden sm:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5" style={{ height: "34px" }}>
+              <button
+                type="button"
+                onClick={() => handleModeChange("FRONT_DESK")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  viewMode === "FRONT_DESK"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="All Cabins & Central Lobby Queue"
+              >
+                <FiLayers size={13} />
+                <span>Front Desk</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => handleModeChange("DOCTOR")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  viewMode === "DOCTOR"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Doctor Cabin Queue"
+              >
+                <FiUserCheck size={13} />
+                <span>Doctor Desk</span>
+              </button>
+            </div>
 
-            <button
-              type="button"
-              onClick={handleSearchSubmit}
-              className="btn-submit"
-              style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
-            >
-              Filter
-            </button>
+            {viewMode === "DOCTOR" && doctors.length > 0 && (
+              <select
+                value={selectedDoctorId}
+                onChange={(e) => handleDoctorChange(e.target.value)}
+                className="dir-filter-select"
+                style={{ height: "34px", padding: "0 10px", fontSize: "12px" }}
+              >
+                {doctors.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.name} ({d.specialization || "Doctor"})
+                  </option>
+                ))}
+              </select>
+            )}
 
-            {hasActiveFilters && (
+            {/* Desktop View Switcher: List vs Cards (Identical to PrescriptionsView) */}
+            <div className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5" style={{ height: "34px" }}>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("table")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Spreadsheet List View"
+              >
+                <FiList size={13} />
+                <span>List View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("cards")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "cards"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Compact Card View"
+              >
+                <FiGrid size={13} />
+                <span>Cards View</span>
+              </button>
+            </div>
+
+            {searchTerm && (
               <button
                 type="button"
                 onClick={handleClearFilters}
                 className="btn-cancel"
-                style={{ width: "auto", height: "34px", padding: "0 12px", fontSize: "12.5px" }}
               >
                 Clear
               </button>
@@ -716,7 +722,10 @@ export default function QueueView() {
             )}
           </div>
         ) : (
-          <div className="dir-table-wrapper">
+          <>
+            {/* Desktop View: Full 10-Column Horizontal Scroll Table (1 at a time when desktopViewMode === 'table') */}
+            {desktopViewMode === "table" && (
+              <div className="dir-table-wrapper queue-desktop-table hidden md:flex">
             <div className="dir-scroll-bar-header">
               <span className="dir-scroll-hint">
                 {queueTab === "completed"
@@ -1012,7 +1021,6 @@ export default function QueueView() {
             pageSizeOptions={[10, 20, 50, 100]}
             itemLabel={queueTab === "completed" ? "completed patients" : "queue tokens"}
           />
-
           <div className="dir-scroll-bar-footer">
             <span className="text-xs text-slate-500 font-medium">
               Real-time patient waiting list. Live queue status synchronizes seamlessly between reception desk and doctor cabins.
@@ -1020,6 +1028,269 @@ export default function QueueView() {
           </div>
         </div>
       )}
+
+      {/* Cards View: ONLY view on mobile (< md), and shown on PC (md+) when desktopViewMode === 'cards' */}
+      <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full`}>
+        <div className="space-y-3.5 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4">
+          {paginatedQueueList.map((q) => {
+            const isUpdating = actionLoadingId === q.id;
+            const isCalled = q.status === "CALLED";
+            const isInConsult = q.status === "IN_CONSULTATION";
+            const isCompleted = q.status === "COMPLETED";
+            const isSkipped = q.status === "SKIPPED";
+            const isWaiting = q.status === "WAITING";
+
+            return (
+              <div
+                key={q.id}
+                className={`bg-white rounded-xl border p-4 shadow-xs flex flex-col gap-3 transition ${
+                  isCalled
+                    ? "border-amber-300 bg-amber-50/30"
+                    : isInConsult
+                    ? "border-teal-300 bg-teal-50/20"
+                    : isCompleted
+                    ? "border-slate-200 opacity-80"
+                    : "border-slate-200"
+                }`}
+              >
+                {/* 1. Header: Token display, UID, Status */}
+                <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span
+                      className={`font-mono text-xs font-bold px-2.5 py-1 rounded-md inline-flex items-center gap-1 shadow-xs border ${
+                        isCalled
+                          ? "bg-amber-500 text-white border-amber-600 animate-pulse"
+                          : isInConsult
+                          ? "bg-[#126868] text-white border-[#0e5252]"
+                          : isCompleted
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : isSkipped
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : "bg-blue-50 text-[#1a56db] border-blue-200"
+                      }`}
+                    >
+                      {q.token_display}
+                    </span>
+                    <span className="font-mono text-[11px] font-semibold text-[#254d90] bg-blue-50/80 px-2 py-0.5 rounded border border-blue-200/60">
+                      {q.patient_uid || (q.patient_id ? `PAT-${String(q.patient_id).padStart(4, "0")}` : "—")}
+                    </span>
+                  </div>
+
+                  <span
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[11px] border ${
+                      isCalled
+                        ? "bg-amber-100 text-amber-800 border-amber-300 animate-pulse"
+                        : isInConsult
+                        ? "bg-teal-50 text-teal-800 border-teal-200"
+                        : isCompleted
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                        : isSkipped
+                        ? "bg-rose-50 text-rose-700 border border-rose-200"
+                        : "bg-blue-50 text-blue-700 border-blue-200"
+                    }`}
+                  >
+                    <span>{q.status}</span>
+                  </span>
+                </div>
+
+                {/* 2. Patient & Cabin Info */}
+                <div>
+                  <h4 className="text-base font-bold text-slate-900 leading-tight">
+                    {q.patient_name}
+                  </h4>
+
+                  <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-xs flex flex-col gap-1.5 mt-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-semibold text-slate-900 truncate">
+                          {q.doctor_name}
+                        </span>
+                        {q.doctor_specialty && (
+                          <span className="text-slate-400 text-[10.5px] truncate">
+                            ({q.doctor_specialty})
+                          </span>
+                        )}
+                      </div>
+                      <span className="text-[10.5px] font-bold text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded border border-[#254d90]/20 shrink-0">
+                        {q.cabin}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60 text-slate-600 font-mono text-[11px]">
+                      <span>Appt: {q.appointment_time || "Walk-in"}</span>
+                      <div className="flex items-center gap-1">
+                        <FiClock size={11} className="text-slate-400" />
+                        <span>Wait: {q.wait_display}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 3. Action Buttons Attached Directly to Card */}
+                <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                  {/* Actions for WAITING status */}
+                  {q.can_call && (
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={isUpdating}
+                        onClick={() => handleCallPatient(q.id, q.cabin)}
+                        className="flex-1 py-2 px-3 text-xs font-bold rounded-lg bg-amber-500 hover:bg-amber-600 text-white shadow-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+                      >
+                        <FiBell size={13} />
+                        <span>Call Patient</span>
+                      </button>
+                      {q.can_skip && (
+                        <button
+                          disabled={isUpdating}
+                          onClick={() => handleSkipPatient(q.id)}
+                          className="py-2 px-3 text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded-lg transition cursor-pointer"
+                        >
+                          Skip
+                        </button>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Actions for CALLED status */}
+                  {(isCalled || q.can_start_consultation) && (
+                    <div className="flex flex-col gap-1.5">
+                      <div className="grid grid-cols-2 gap-2">
+                        {q.can_notify_again && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() => handleNotifyAgain(q.id)}
+                            className="py-2 px-2 text-xs font-bold rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
+                          >
+                            <FiBell size={13} />
+                            <span>Recall</span>
+                          </button>
+                        )}
+                        {q.can_start_consultation && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() => handleStartConsultation(q)}
+                            className="py-2 px-2 text-xs font-bold rounded-lg bg-[#126868] hover:bg-[#0e5252] text-white shadow-xs transition cursor-pointer inline-flex items-center justify-center gap-1"
+                          >
+                            <FiActivity size={13} />
+                            <span>Start Consult</span>
+                          </button>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWorkspace(q)}
+                          className="flex-1 py-1.5 px-2 text-xs font-semibold rounded-lg bg-[#254d90]/10 hover:bg-[#254d90]/20 text-[#254d90] transition cursor-pointer inline-flex items-center justify-center gap-1"
+                        >
+                          <FiActivity size={12} />
+                          <span>Open Workspace</span>
+                        </button>
+                        {q.can_skip && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() => handleSkipPatient(q.id)}
+                            className="py-1.5 px-3 text-xs font-semibold text-slate-500 hover:text-rose-600 hover:bg-rose-50 border border-slate-200 rounded-lg transition cursor-pointer"
+                          >
+                            Skip
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions for IN_CONSULTATION status */}
+                  {isInConsult && (
+                    <div className="flex flex-col gap-1.5">
+                      {q.can_finish_and_call_next && (
+                        <button
+                          disabled={isUpdating}
+                          onClick={() => handleFinishAndCallNext(q.id, q.cabin)}
+                          className="w-full py-2.5 px-3 text-xs font-bold rounded-lg bg-[#254d90] hover:bg-[#1b3a6d] text-white shadow-xs transition cursor-pointer inline-flex items-center justify-center gap-1.5"
+                        >
+                          <FiZap size={14} className="text-amber-300" />
+                          <span>Finish &amp; Call Next</span>
+                        </button>
+                      )}
+                      <div className="grid grid-cols-2 gap-2">
+                        {q.can_finish && (
+                          <button
+                            disabled={isUpdating}
+                            onClick={() => handleFinishConsultation(q.id)}
+                            className="py-2 px-2 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition cursor-pointer inline-flex items-center justify-center gap-1"
+                          >
+                            <FiCheckCircle size={13} className="text-emerald-600" />
+                            <span>Finish</span>
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWorkspace(q)}
+                          className="py-2 px-2 text-xs font-semibold rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer inline-flex items-center justify-center gap-1"
+                        >
+                          <FiActivity size={12} />
+                          <span>Workspace</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Actions for COMPLETED status */}
+                  {isCompleted && (
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-1 rounded font-semibold inline-flex items-center gap-1">
+                        <FiCheckCircle size={12} />
+                        <span>Completed Checkup</span>
+                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => handleOpenWorkspace(q)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <FiFolder size={11} />
+                          <span>EMR</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/billing?patient_id=${q.patient_id}&appointment_id=${q.appointment_id}`)}
+                          className="px-2.5 py-1 text-xs font-semibold rounded bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition cursor-pointer inline-flex items-center gap-1"
+                        >
+                          <span>Bill</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Skipped status */}
+                  {isSkipped && (
+                    <div className="text-xs text-slate-400 italic py-1">
+                      Patient was skipped in queue.
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Mobile / Cards Pagination Control */}
+        <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs mt-3.5">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={tabFilteredQueue.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(p)}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50, 100]}
+            itemLabel={queueTab === "completed" ? "completed patients" : "queue tokens"}
+          />
+        </div>
+      </div>
+    </>
+  )}
     </section>
 
       {/* CHECK IN PATIENT MODAL */}

@@ -71,7 +71,7 @@ ROLE_MAPPING = {
     "pharma": {
         "code": "Pharma",
         "label": "Pharmacist / Inventory",
-        "theme": "purple",
+        "theme": "teal",
         "portal": "Pharmacy & Dispensing Portal",
         "is_frontdesk": False,
         "is_doctor": False,
@@ -81,7 +81,7 @@ ROLE_MAPPING = {
     "pharmacist": {
         "code": "Pharma",
         "label": "Pharmacist / Inventory",
-        "theme": "purple",
+        "theme": "teal",
         "portal": "Pharmacy & Dispensing Portal",
         "is_frontdesk": False,
         "is_doctor": False,

@@ -105,7 +105,7 @@ export default function UsersView() {
       portal: "Dispensary & Medicine Inventory",
       icon: FiPackage,
       badge: "Role: Pharma",
-      badgeColor: "bg-purple-50 text-purple-700 border-purple-200",
+      badgeColor: "bg-[#126868]/10 text-[#126868] border border-[#126868]/30",
       description: "Focused on medication fulfillment: batch inventory tracking, expiry alerts, dispensing signed doctor prescriptions, goods receipt notes (GRN), and dispensary cashier billing.",
       permissions: [
         "Live Prescription Dispensing Queue & Medication Fulfillment",
@@ -789,8 +789,7 @@ export default function UsersView() {
                                 ? "bg-teal-50 text-teal-800 border-teal-200"
                                 : u.role_theme === "blue"
                                 ? "bg-blue-50 text-blue-800 border-blue-200"
-                                : u.role_theme === "purple"
-                                ? "bg-purple-50 text-purple-800 border-purple-200"
+
                                 : "bg-emerald-50 text-emerald-800 border-emerald-200"
                             }`}
                           >

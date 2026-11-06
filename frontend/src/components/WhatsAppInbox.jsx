@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import {
+  FiArrowLeft,
   FiMessageCircle,
   FiSend,
   FiSearch,
@@ -76,6 +77,92 @@ function formatWhatsAppBody(text) {
   });
 }
 
+// Format full date & time for WhatsApp message bubbles (e.g. "26 Oct 2026, 10:29 AM")
+function formatMessageDateTime(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return dateStr;
+  const datePart = d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  });
+  const timePart = d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+  return `${datePart}, ${timePart}`;
+}
+
+// Format timestamp for conversation thread list in the left roster
+function formatThreadTimestamp(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+
+  const now = new Date();
+  const isToday =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    d.getDate() === yesterday.getDate() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getFullYear() === yesterday.getFullYear();
+
+  const timePart = d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+
+  if (isToday) {
+    return `Today, ${timePart}`;
+  }
+  if (isYesterday) {
+    return `Yesterday, ${timePart}`;
+  }
+
+  const datePart = d.toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: d.getFullYear() === now.getFullYear() ? undefined : "numeric",
+  });
+  return `${datePart}, ${timePart}`;
+}
+
+// Format date separator pills between messages (e.g. "Today", "Yesterday", "Monday, 26 October 2026")
+function formatDateDivider(dateStr) {
+  if (!dateStr) return "";
+  const d = new Date(dateStr);
+  if (isNaN(d.getTime())) return "";
+
+  const now = new Date();
+  const isToday =
+    d.getDate() === now.getDate() &&
+    d.getMonth() === now.getMonth() &&
+    d.getFullYear() === now.getFullYear();
+
+  const yesterday = new Date(now);
+  yesterday.setDate(now.getDate() - 1);
+  const isYesterday =
+    d.getDate() === yesterday.getDate() &&
+    d.getMonth() === yesterday.getMonth() &&
+    d.getFullYear() === yesterday.getFullYear();
+
+  if (isToday) return "Today";
+  if (isYesterday) return "Yesterday";
+
+  return d.toLocaleDateString("en-GB", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+}
+
 export default function WhatsAppInbox({ onOpenBookModal }) {
   const { showToast } = useToast();
   const navigate = useNavigate();
@@ -86,6 +173,7 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
   const [templates, setTemplates] = useState([]);
   const [threads, setThreads] = useState([]);
   const [selectedPhone, setSelectedPhone] = useState(phoneParam || "");
+  const [mobileChatOpen, setMobileChatOpen] = useState(Boolean(phoneParam));
   const [messages, setMessages] = useState([]);
   const [replyText, setReplyText] = useState("");
   const [loadingThreads, setLoadingThreads] = useState(true);
@@ -114,8 +202,9 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
     try {
       const data = await fetchWhatsAppThreads(query);
       setThreads(data || []);
-      // If no phone selected yet, select the first thread if available
-      if (!selectedPhone && data && data.length > 0 && !phoneParam) {
+      // If on desktop and no phone selected yet, select the first thread if available
+      const isMobile = typeof window !== "undefined" && window.innerWidth <= 768;
+      if (!selectedPhone && data && data.length > 0 && !phoneParam && !isMobile) {
         setSelectedPhone(data[0].phone);
       }
     } catch (err) {
@@ -123,6 +212,11 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
     } finally {
       setLoadingThreads(false);
     }
+  };
+
+  const handleThreadClick = (phone) => {
+    setSelectedPhone(phone);
+    setMobileChatOpen(true);
   };
 
   const loadMessages = async (phone) => {
@@ -147,6 +241,7 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
   useEffect(() => {
     if (phoneParam) {
       setSelectedPhone(phoneParam);
+      setMobileChatOpen(true);
     }
   }, [phoneParam]);
 
@@ -206,8 +301,9 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
         kicker="COMMUNICATION & META INTEGRATION"
         title="WhatsApp Live Messages & Bookings"
         icon={FiMessageCircle}
+        actionsBelowOnMobile={true}
         rightAction={
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             {/* Meta API Live Status Pill */}
             <span className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
@@ -238,7 +334,7 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
       />
 
       {/* Aerostate LRS Executive Stats Grid */}
-      <div className="dir-stats-grid">
+      <div className={`dir-stats-grid ${mobileChatOpen ? "hidden md:grid" : ""}`}>
         <StatCard
           title="Total Messages"
           value={stats?.total_messages || 0}
@@ -267,15 +363,17 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
 
       {/* Standard LRS Module Section */}
       <section className="dir-modules-section">
-        <ModuleWriternHeader
-          title="WhatsApp Live Chat Roster"
-          description="Real-time patient chat sessions, automated booking confirmations, and direct reception messaging."
-          badgeCount={threads.length}
-          badgeLabel="conversations"
-        />
+        <div className={mobileChatOpen ? "hidden md:block" : ""}>
+          <ModuleWriternHeader
+            title="WhatsApp Live Chat Roster"
+            description="Real-time patient chat sessions, automated booking confirmations, and direct reception messaging."
+            badgeCount={threads.length}
+            badgeLabel="conversations"
+          />
+        </div>
 
-        {/* Main Split-Pane Container */}
-        <div className="inbox-container">
+        {/* Main Split-Pane Container (Responsive WhatsApp Messenger style) */}
+        <div className={`inbox-container ${mobileChatOpen ? "mobile-chat-active" : "mobile-list-active"}`}>
           {/* Left Panel: Conversation Threads */}
           <aside className="inbox-sidebar">
             <div className="inbox-sidebar-header">
@@ -323,7 +421,7 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
                   return (
                     <div
                       key={t.phone}
-                      onClick={() => setSelectedPhone(t.phone)}
+                      onClick={() => handleThreadClick(t.phone)}
                       className={`inbox-thread-item ${isSelected ? "selected" : ""}`}
                     >
                       <div className="inbox-avatar">
@@ -333,11 +431,11 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
                         <div className="inbox-thread-top">
                           <span className="inbox-patient-name">{t.patient_name || "Valued Patient"}</span>
                           {t.latest_message?.created_at && (
-                            <span className="inbox-time">
-                              {new Date(t.latest_message.created_at).toLocaleTimeString([], {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })}
+                            <span
+                              className="inbox-time"
+                              title={formatMessageDateTime(t.latest_message.created_at)}
+                            >
+                              {formatThreadTimestamp(t.latest_message.created_at)}
                             </span>
                           )}
                         </div>
@@ -384,18 +482,28 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
               <>
                 {/* Chat Header */}
                 <div className="inbox-chat-header">
-                  <div className="flex items-center gap-3">
-                    <div className="inbox-avatar inbox-avatar-lg">
+                  <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                    {/* Mobile Back Button (Messenger / WhatsApp style) */}
+                    <button
+                      type="button"
+                      onClick={() => setMobileChatOpen(false)}
+                      className="inbox-mobile-back-btn"
+                      title="Back to conversation list"
+                    >
+                      <FiArrowLeft size={18} />
+                    </button>
+
+                    <div className="inbox-avatar inbox-avatar-lg shrink-0">
                       {(selectedThread?.patient_name || "P").charAt(0).toUpperCase()}
                     </div>
-                    <div>
-                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2 m-0">
-                        <span>{selectedThread?.patient_name || "Valued Patient"}</span>
-                        <span className="inbox-meta-badge">
+                    <div className="min-w-0">
+                      <h3 className="text-sm font-bold text-slate-900 flex items-center gap-1.5 sm:gap-2 m-0 truncate">
+                        <span className="truncate">{selectedThread?.patient_name || "Valued Patient"}</span>
+                        <span className="inbox-meta-badge shrink-0">
                           <FiShield size={10} /> Meta Verified
                         </span>
                       </h3>
-                      <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5">
+                      <div className="flex items-center gap-2 text-xs text-slate-500 font-mono mt-0.5 truncate">
                         <span>{selectedPhone}</span>
                         {selectedThread?.patient_uid && (
                           <span className="text-[#254d90] font-semibold">({selectedThread.patient_uid})</span>
@@ -470,51 +578,64 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
                       <p className="text-xs text-slate-400 mt-1">Send a direct message below to reach this patient.</p>
                     </div>
                   ) : (
-                    messages.map((m) => {
+                    messages.map((m, idx) => {
                       const isPatient = m.sender === "patient";
                       const isBot = m.sender === "bot";
                       const isClinic = m.sender === "clinic";
                       const isBooking = m.message_type === "booking_confirmation";
 
+                      const msgDate = new Date(m.created_at);
+                      const prevMsg = idx > 0 ? messages[idx - 1] : null;
+                      const prevDate = prevMsg ? new Date(prevMsg.created_at) : null;
+                      const showDateDivider =
+                        !prevDate ||
+                        isNaN(prevDate.getTime()) ||
+                        isNaN(msgDate.getTime()) ||
+                        msgDate.toDateString() !== prevDate.toDateString();
+
                       return (
-                        <div
-                          key={m.id}
-                          className={`chat-bubble-wrapper ${
-                            isPatient ? "incoming" : isClinic ? "outgoing-clinic" : "outgoing-bot"
-                          }`}
-                        >
+                        <React.Fragment key={m.id || idx}>
+                          {showDateDivider && (
+                            <div className="chat-date-divider">
+                              <span className="chat-date-pill">
+                                <FiCalendar size={11} className="inline mr-1 opacity-70" />
+                                {formatDateDivider(m.created_at)}
+                              </span>
+                            </div>
+                          )}
                           <div
-                            className={`chat-bubble ${
-                              isBooking
-                                ? "chat-bubble-booking"
-                                : isPatient
-                                ? "chat-bubble-patient"
-                                : isClinic
-                                ? "chat-bubble-clinic"
-                                : "chat-bubble-bot"
+                            className={`chat-bubble-wrapper ${
+                              isPatient ? "incoming" : isClinic ? "outgoing-clinic" : "outgoing-bot"
                             }`}
                           >
-                            <div className="chat-bubble-sender">
-                              {isPatient && "👤 Patient"}
-                              {isBot && "🤖 AeroState Bot"}
-                              {isClinic && "🏥 Clinic Reception"}
-                            </div>
+                            <div
+                              className={`chat-bubble ${
+                                isBooking
+                                  ? "chat-bubble-booking"
+                                  : isPatient
+                                  ? "chat-bubble-patient"
+                                  : isClinic
+                                  ? "chat-bubble-clinic"
+                                  : "chat-bubble-bot"
+                              }`}
+                            >
+                              <div className="chat-bubble-sender">
+                                {isPatient && "👤 Patient"}
+                                {isBot && "🤖 AeroState Bot"}
+                                {isClinic && "🏥 Clinic Reception"}
+                              </div>
 
-                            <div className="chat-bubble-body">
-                              {formatWhatsAppBody(m.body)}
-                            </div>
+                              <div className="chat-bubble-body">
+                                {formatWhatsAppBody(m.body)}
+                              </div>
 
-                            <div className="chat-bubble-meta">
-                              <span>
-                                {new Date(m.created_at).toLocaleTimeString([], {
-                                  hour: "2-digit",
-                                  minute: "2-digit",
-                                })}
-                              </span>
-                              {!isPatient && <FiCheck size={12} className="inline ml-1" />}
+                              <div className="chat-bubble-meta" title={m.created_at ? new Date(m.created_at).toLocaleString() : ""}>
+                                <span>{formatMessageDateTime(m.created_at)}</span>
+                                {!isPatient && <FiCheck size={12} className="inline ml-1" />}
+                              </div>
                             </div>
                           </div>
-                        </div>
+                        </React.Fragment>
                       );
                     })
                   )}

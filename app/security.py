@@ -145,6 +145,30 @@ def require_superadmin(current_user: User = Depends(get_current_user)) -> User:
     return current_user
 
 
+STAFF_ROLES = {
+    "admin",
+    "superadmin",
+    "client",
+    "doctor",
+    "frontdesk",
+    "receptionist",
+    "pharma",
+    "pharmacist",
+    "staff",
+}
+
+
+def require_staff(current_user: User = Depends(get_current_user)) -> User:
+    """FastAPI Dependency: Requires the user to be an active clinic staff member (Doctor, FrontDesk, Pharma, Admin, SuperAdmin)."""
+    role = (current_user.role or "").lower()
+    if role not in STAFF_ROLES:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff or clinician privileges required to perform this action",
+        )
+    return current_user
+
+
 def require_admin(current_user: User = Depends(get_current_user)) -> User:
     """FastAPI Dependency: Requires the user to have Admin, SuperAdmin, or Client role."""
     role = (current_user.role or "").lower()

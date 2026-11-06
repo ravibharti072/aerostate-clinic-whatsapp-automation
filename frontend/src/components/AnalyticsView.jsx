@@ -155,10 +155,10 @@ export default function AnalyticsView() {
         </div>
 
         {/* Total Invoiced */}
-        <div className="lrs-card p-4 flex flex-col justify-between hover:shadow-md transition-shadow border-l-4 border-l-indigo-500">
+        <div className="lrs-card p-4 flex flex-col justify-between hover:shadow-md transition-shadow border-l-4 border-l-[#254d90]">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Gross Invoiced</span>
-            <div className="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-blue-50 text-[#254d90] flex items-center justify-center">
               <FiCreditCard size={16} />
             </div>
           </div>
@@ -168,7 +168,7 @@ export default function AnalyticsView() {
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px]">
               <span className="text-slate-500">Avg / Bill: ₹{(fin.average_bill || 0).toLocaleString()}</span>
-              <span className="text-indigo-700 font-bold bg-indigo-50 px-1.5 py-0.5 rounded">
+              <span className="text-[#254d90] font-bold bg-blue-50 px-1.5 py-0.5 rounded">
                 {fin.paid_invoices_count || 0} Bills
               </span>
             </div>
@@ -218,10 +218,10 @@ export default function AnalyticsView() {
         </div>
 
         {/* Pharmacy Stream */}
-        <div className="lrs-card p-4 flex flex-col justify-between hover:shadow-md transition-shadow border-l-4 border-l-purple-500">
+        <div className="lrs-card p-4 flex flex-col justify-between hover:shadow-md transition-shadow border-l-4 border-l-[#126868]">
           <div className="flex items-center justify-between">
             <span className="text-[11px] font-bold uppercase tracking-wider text-slate-500">Pharmacy</span>
-            <div className="w-8 h-8 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-[#126868]/10 text-[#126868] flex items-center justify-center">
               <FiPackage size={16} />
             </div>
           </div>
@@ -231,7 +231,7 @@ export default function AnalyticsView() {
             </div>
             <div className="mt-1 flex items-center justify-between text-[11px]">
               <span className="text-slate-500">{pharmaStream.count} Items</span>
-              <span className="text-purple-700 font-bold bg-purple-50 px-1.5 py-0.5 rounded">
+              <span className="text-[#126868] font-bold bg-[#126868]/10 px-1.5 py-0.5 rounded">
                 {pharmaStream.percentage}%
               </span>
             </div>
@@ -394,19 +394,19 @@ export default function AnalyticsView() {
               </div>
 
               {/* Pharmacy Stream */}
-              <div className="p-3 rounded-xl bg-purple-50/50 border border-purple-100 space-y-2">
+              <div className="p-3 rounded-xl bg-blue-50/50 border border-blue-100 space-y-2">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full bg-purple-600" />
+                    <span className="w-2.5 h-2.5 rounded-full bg-[#254d90]" />
                     <span className="text-xs font-bold text-slate-900">Pharmacy Dispensary</span>
                   </div>
-                  <span className="text-xs font-extrabold text-purple-700">
+                  <span className="text-xs font-extrabold text-[#254d90]">
                     ₹{pharmaStream.revenue.toLocaleString()}
                   </span>
                 </div>
-                <div className="w-full bg-purple-100 h-2 rounded-full overflow-hidden">
+                <div className="w-full bg-blue-100 h-2 rounded-full overflow-hidden">
                   <div
-                    className="bg-purple-600 h-full rounded-full transition-all"
+                    className="bg-[#254d90] h-full rounded-full transition-all"
                     style={{ width: `${pharmaStream.percentage}%` }}
                   />
                 </div>
@@ -635,8 +635,8 @@ export default function AnalyticsView() {
                 { bg: "bg-blue-500", light: "bg-blue-50", text: "text-blue-700" },
                 { bg: "bg-teal-500", light: "bg-teal-50", text: "text-teal-700" },
                 { bg: "bg-emerald-500", light: "bg-emerald-50", text: "text-emerald-700" },
-                { bg: "bg-purple-500", light: "bg-purple-50", text: "text-purple-700" },
-                { bg: "bg-indigo-500", light: "bg-indigo-50", text: "text-indigo-700" },
+                { bg: "bg-[#254d90]", light: "bg-blue-50", text: "text-[#254d90]" },
+                { bg: "bg-amber-500", light: "bg-amber-50", text: "text-amber-700" },
               ];
               const c = colors[idx % colors.length];
 

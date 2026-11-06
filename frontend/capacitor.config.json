@@ -1,0 +1,9 @@
+{
+  "appId": "com.aerostate.clinic",
+  "appName": "Aerostate Clinic",
+  "webDir": "dist",
+  "server": {
+    "androidScheme": "http",
+    "cleartext": true
+  }
+}

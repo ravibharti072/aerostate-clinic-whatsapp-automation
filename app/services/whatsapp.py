@@ -84,28 +84,117 @@ class WhatsAppClient:
                 "error": str(e),
             }
 
+    async def send_raw_payload(
+        self,
+        payload: Dict[str, Any],
+        phone_number_id: Optional[str] = None,
+        token: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """Direct raw dispatch without offline queueing (used by outbox flusher)."""
+        auth_token = token or settings.WHATSAPP_TOKEN
+        if not auth_token or auth_token.startswith("YOUR_"):
+            logger.info("WhatsApp token is placeholder. Simulated send.")
+            return {"simulated": True}
+
+        url = self.get_url(phone_number_id)
+        headers = self.get_headers(auth_token)
+        timeout = httpx.Timeout(timeout=10.0, connect=3.0)
+
+        async with httpx.AsyncClient(timeout=timeout) as client:
+            response = await client.post(url, headers=headers, json=payload)
+            if response.status_code >= 400:
+                logger.error(f"WhatsApp API Error {response.status_code}: {response.text}")
+                return None
+            return response.json()
+
     async def _send_payload(
         self,
         payload: Dict[str, Any],
         phone_number_id: Optional[str] = None,
         token: Optional[str] = None,
     ) -> Optional[Dict[str, Any]]:
-        """Sends a JSON payload to the Meta WhatsApp Cloud API."""
+        """Sends a JSON payload to Meta. Automatically queues to SQLite outbox if offline or error."""
+        from app.services.sync_service import is_internet_available, sync_service
+        from app.database import SessionLocal
+
         auth_token = token or settings.WHATSAPP_TOKEN
         if not auth_token or auth_token.startswith("YOUR_"):
             logger.info("WhatsApp token is placeholder. Skipping actual Meta API call.")
             return {"simulated": True}
 
+        recipient = payload.get("to")
+
+        # 1. Immediate offline check: non-blocking auto-queue
+        if not is_internet_available():
+            logger.info(f"System offline: Auto-queuing WhatsApp to {recipient}")
+            db = SessionLocal()
+            try:
+                sync_service.enqueue_whatsapp(
+                    db=db,
+                    recipient=recipient,
+                    payload=payload,
+                    phone_number_id=phone_number_id,
+                    token=token,
+                    last_error="Offline when message was generated",
+                )
+                return {
+                    "status": "queued_offline",
+                    "queued": True,
+                    "simulated": False,
+                    "message": "Message saved to offline outbox. Will be sent once internet connects.",
+                }
+            finally:
+                db.close()
+
+        # 2. Online send with fast connect timeout
         url = self.get_url(phone_number_id)
         headers = self.get_headers(auth_token)
+        timeout = httpx.Timeout(timeout=8.0, connect=2.5)
 
         try:
-            async with httpx.AsyncClient(timeout=10.0) as client:
+            async with httpx.AsyncClient(timeout=timeout) as client:
                 response = await client.post(url, headers=headers, json=payload)
                 if response.status_code >= 400:
                     logger.error(f"WhatsApp API Error {response.status_code}: {response.text}")
+                    if response.status_code in (429, 500, 502, 503, 504):
+                        db = SessionLocal()
+                        try:
+                            sync_service.enqueue_whatsapp(
+                                db=db,
+                                recipient=recipient,
+                                payload=payload,
+                                phone_number_id=phone_number_id,
+                                token=token,
+                                last_error=f"HTTP {response.status_code}: {response.text[:200]}",
+                            )
+                            return {
+                                "status": "queued_offline",
+                                "queued": True,
+                                "message": f"WhatsApp server error (HTTP {response.status_code}). Queued for retry.",
+                            }
+                        finally:
+                            db.close()
                     return None
                 return response.json()
+        except (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError) as e:
+            logger.warning(f"Connection failed ({e}). Auto-queuing message for {recipient}.")
+            db = SessionLocal()
+            try:
+                sync_service.enqueue_whatsapp(
+                    db=db,
+                    recipient=recipient,
+                    payload=payload,
+                    phone_number_id=phone_number_id,
+                    token=token,
+                    last_error=str(e),
+                )
+                return {
+                    "status": "queued_offline",
+                    "queued": True,
+                    "message": "Network disconnected. Message saved to offline outbox.",
+                }
+            finally:
+                db.close()
         except Exception as e:
             logger.error(f"Failed to communicate with WhatsApp API: {e}")
             return None
@@ -200,6 +289,45 @@ class WhatsAppClient:
             "to": to,
             "type": "interactive",
             "interactive": interactive
+        }
+        return await self._send_payload(payload, phone_number_id=phone_number_id, token=token)
+
+
+    async def send_template(
+        self,
+        to: str,
+        template_name: str,
+        language_code: str = "en_US",
+        body_parameters: Optional[List[str]] = None,
+        components: Optional[List[Dict[str, Any]]] = None,
+        phone_number_id: Optional[str] = None,
+        token: Optional[str] = None,
+    ) -> Optional[Dict[str, Any]]:
+        """
+        Sends an approved Meta WhatsApp template message.
+        Required for business-initiated notifications outside the 24-hour service window.
+        """
+        template_payload: Dict[str, Any] = {
+            "name": template_name,
+            "language": {"code": language_code},
+        }
+
+        if components:
+            template_payload["components"] = components
+        elif body_parameters:
+            template_payload["components"] = [
+                {
+                    "type": "body",
+                    "parameters": [{"type": "text", "text": str(p)} for p in body_parameters],
+                }
+            ]
+
+        payload = {
+            "messaging_product": "whatsapp",
+            "recipient_type": "individual",
+            "to": to,
+            "type": "template",
+            "template": template_payload,
         }
         return await self._send_payload(payload, phone_number_id=phone_number_id, token=token)
 

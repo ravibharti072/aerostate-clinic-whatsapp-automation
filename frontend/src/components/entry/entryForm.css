@@ -453,3 +453,37 @@
   cursor: not-allowed;
   transform: none;
 }
+
+/* Mobile Responsive Adjustments for Entry Form */
+@media (max-width: 768px) {
+  .asr-unified-card {
+    padding: 14px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  .asr-submit-panel {
+    padding: 10px !important;
+  }
+
+  .asr-submit-summary-strip {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+    padding: 10px 12px !important;
+  }
+
+  .asr-summary-divider {
+    display: none !important;
+  }
+
+  .asr-summary-col-val {
+    white-space: normal !important;
+    font-size: 12px !important;
+    word-break: break-word !important;
+  }
+
+  .asr-summary-grand-total {
+    font-size: 14px !important;
+    white-space: normal !important;
+  }
+}

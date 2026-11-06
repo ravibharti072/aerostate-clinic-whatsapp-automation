@@ -22,7 +22,9 @@ import {
   FiDownload,
   FiSend,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiList,
+  FiGrid
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import PortalHeader from "./portalheader/PortalHeader";
@@ -58,6 +60,7 @@ export default function AppointmentsView({ onOpenBookModal }) {
   const [rescheduleModalAppt, setRescheduleModalAppt] = useState(null);
   const [collectPaymentAppt, setCollectPaymentAppt] = useState(null);
   const [sendingWhatsAppId, setSendingWhatsAppId] = useState(null);
+  const [desktopViewMode, setDesktopViewMode] = useState("table"); // 'table' | 'cards'
   const [searchParams] = useSearchParams();
   const searchParam = searchParams.get("search") || "";
 
@@ -375,13 +378,13 @@ export default function AppointmentsView({ onOpenBookModal }) {
     search || (appointmentTab && appointmentTab !== "open") || clinicFilter || doctorFilter || sourceFilter || dateFilter
   );
 
-  // Stats calculation
+  // Backend-calculated master stats with graceful fallback
   const totalInList = appointments.length;
-  const totalToday = totalInList;
-  const confirmedCount = appointments.filter((a) => a.status === "CONFIRMED").length;
+  const totalToday = stats?.today_appointments ?? stats?.kpis?.today_appointments?.value ?? totalInList;
+  const confirmedCount = stats?.confirmed_appointments ?? stats?.kpis?.confirmed_appointments?.value ?? appointments.filter((a) => a.status === "CONFIRMED").length;
   const confirmedToday = confirmedCount;
-  const totalPatients = stats?.kpis?.registered_patients?.value ?? stats?.total_patients ?? 4;
-  const activeSpecialists = doctors.length || stats?.kpis?.active_doctors?.value || 1;
+  const totalPatients = stats?.kpis?.registered_patients?.value ?? stats?.total_patients ?? 0;
+  const activeSpecialists = stats?.kpis?.active_doctors?.value ?? stats?.active_doctors ?? (doctors.length || 0);
 
   return (
     <div className="space-y-6">
@@ -390,6 +393,8 @@ export default function AppointmentsView({ onOpenBookModal }) {
         kicker="OPD & APPOINTMENT OPERATIONS"
         title="Appointment Entry"
         icon={FiCalendar}
+        className="appointments-portal-header"
+        actionsBelowOnMobile={true}
         rightAction={
           <button
             type="button"
@@ -647,6 +652,38 @@ export default function AppointmentsView({ onOpenBookModal }) {
               <FiDownload size={13} className="text-[#126868]" />
               <span>Export CSV</span>
             </button>
+
+            {/* Desktop View Switcher: 1 at a time (List vs Cards) */}
+            <div className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5" style={{ height: "34px" }}>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("table")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Spreadsheet List View"
+              >
+                <FiList size={13} />
+                <span>List View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("cards")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "cards"
+                    ? "bg-[#254d90] text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Responsive Cards View"
+              >
+                <FiGrid size={13} />
+                <span>Cards View</span>
+              </button>
+            </div>
           </div>
         </div>
 
@@ -664,7 +701,10 @@ export default function AppointmentsView({ onOpenBookModal }) {
             </p>
           </div>
         ) : (
-          <div className="dir-table-wrapper">
+          <>
+            {/* Desktop View: Full 16-Column Horizontal Scroll Table (1 at a time when desktopViewMode === 'table') */}
+            {desktopViewMode === "table" && (
+              <div className="dir-table-wrapper appt-desktop-table hidden md:flex">
             <div className="dir-scroll-bar-header" style={{ justifyContent: "flex-end", padding: "6px 14px" }}>
               <div className="dir-scroll-actions">
                 <button
@@ -821,18 +861,17 @@ export default function AppointmentsView({ onOpenBookModal }) {
                         <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                           <div className="flex flex-col gap-1 items-start">
                             <span
-                              className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold border ${
+                              className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
                                 (appt.source || "").toLowerCase().includes("whatsapp")
                                   ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                                   : "bg-blue-50 text-blue-700 border-blue-200"
                               }`}
-                              style={{ fontSize: "11px" }}
                             >
                               {(appt.source || "").toLowerCase().includes("whatsapp") ? "WhatsApp" : "Direct"}
                             </span>
                             {appt.visit_type && (
                               <span
-                                className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${
+                                className={`inline-flex items-center text-[10.5px] font-semibold px-2 py-0.5 rounded-full border ${
                                   appt.visit_type === "Follow-up Visit"
                                     ? "bg-teal-50 text-teal-800 border-teal-200"
                                     : appt.visit_type === "Emergency / Urgent"
@@ -841,11 +880,6 @@ export default function AppointmentsView({ onOpenBookModal }) {
                                 }`}
                               >
                                 {appt.visit_type}
-                              </span>
-                            )}
-                            {appt.clinic_name && (
-                              <span className="text-[10px] text-slate-500 font-medium" title={`Clinic Branch: ${appt.clinic_name}`}>
-                                🏥 {appt.clinic_name}
                               </span>
                             )}
                           </div>
@@ -947,7 +981,7 @@ export default function AppointmentsView({ onOpenBookModal }) {
 
                               {appt.queue_token && (
                                 <span
-                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-bold font-mono bg-purple-50 text-purple-700 border border-purple-200"
+                                  className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200"
                                   title={`Queue Token #${appt.queue_token}`}
                                 >
                                   Token #{String(appt.queue_token).padStart(2, "0")}
@@ -1161,6 +1195,347 @@ export default function AppointmentsView({ onOpenBookModal }) {
           </div>
         </div>
       )}
+
+      {/* Cards View: ONLY view on mobile (< md), and shown on PC (md+) when desktopViewMode === 'cards' */}
+      <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full`}>
+        <div className="space-y-3.5 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4">
+          {paginatedAppointments.map((appt) => {
+            const isToday = (appt.appointment_date || appt.date) === getTodayStr();
+            const nowTime = `${String(new Date().getHours()).padStart(2, "0")}:${String(new Date().getMinutes()).padStart(2, "0")}`;
+            const isDueForCheckIn =
+              isToday && (appt.start_time || "") <= nowTime && appt.status === "CONFIRMED" && !appt.queue_token;
+            const isUpdating = updatingId === appt.id;
+
+            return (
+              <div
+                key={appt.id}
+                className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col gap-3"
+              >
+                {/* 1. Card Top Bar: Ref #, UID, Source, Status, Token */}
+                <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[11px] font-bold text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                        #{appt.reference_code || appt.id}
+                      </span>
+                      <span className="font-mono text-[11px] font-semibold text-slate-700">
+                        {appt.patient_uid || `PAT-${String(appt.patient_id || 0).padStart(4, "0")}`}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      <span
+                        className={`inline-flex items-center px-1.5 py-0.2 rounded-full font-bold text-[10px] border ${
+                          (appt.source || "").toLowerCase().includes("whatsapp")
+                            ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                            : "bg-blue-50 text-blue-700 border-blue-200"
+                        }`}
+                      >
+                        {(appt.source || "").toLowerCase().includes("whatsapp") ? "WhatsApp" : "Direct"}
+                      </span>
+                      {appt.visit_type && (
+                        <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded border bg-slate-100 text-slate-700 border-slate-200">
+                          {appt.visit_type}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    {appt.status === "CONFIRMED" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
+                        Confirmed
+                      </span>
+                    ) : appt.status === "IN_CONSULTATION" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-800 border border-amber-300">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></span>
+                        In Consultation
+                      </span>
+                    ) : appt.status === "COMPLETED" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-blue-500"></span>
+                        Completed
+                      </span>
+                    ) : appt.status === "CANCELLED" ? (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-rose-50 text-rose-700 border border-rose-200">
+                        <span className="w-1.5 h-1.5 rounded-full bg-rose-500"></span>
+                        Cancelled
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                        {appt.status}
+                      </span>
+                    )}
+
+                    {appt.queue_token && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10.5px] font-bold font-mono bg-amber-50 text-amber-800 border border-amber-200">
+                        Token #{String(appt.queue_token).padStart(2, "0")}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. Patient Identity & Contact */}
+                <div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h4 className="text-base font-bold text-slate-900 leading-tight">
+                      {appt.patient_name}
+                    </h4>
+                    {appt.patient_phone && (
+                      <a
+                        href={`tel:${appt.patient_phone}`}
+                        className="inline-flex items-center gap-1 text-xs font-mono text-[#126868] hover:underline font-semibold"
+                      >
+                        <FiPhone className="w-3 h-3 text-[#126868]" />
+                        <span>{(appt.patient_phone || "").replace(/^\+?91/, "")}</span>
+                      </a>
+                    )}
+                  </div>
+
+                  {appt.notes && (
+                    <div className="mt-1.5 text-xs text-amber-900 bg-amber-50/90 border border-amber-200/80 px-2 py-1 rounded">
+                      💬 {appt.notes}
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap text-xs">
+                    {appt.gender && appt.gender !== "Unspecified" && (
+                      <span className="px-1.5 py-0.5 rounded font-semibold text-[11px] bg-slate-100 text-slate-800 border border-slate-200">
+                        {appt.gender}
+                      </span>
+                    )}
+                    {appt.age != null && appt.age !== "" && (
+                      <span className="font-mono text-slate-800 font-medium text-[11px] px-1.5 py-0.5 rounded bg-slate-100 border border-slate-200">
+                        {appt.age} yrs
+                      </span>
+                    )}
+                    {appt.blood_group && (
+                      <span className="font-mono font-bold text-rose-700 bg-rose-50 border border-rose-200 px-1.5 py-0.5 rounded text-[11px]">
+                        {appt.blood_group}
+                      </span>
+                    )}
+                    {appt.aadhaar_number && (
+                      <span className="font-mono text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200 text-[10.5px]">
+                        Aadhaar: {appt.aadhaar_number}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Slot & Doctor Cardlet */}
+                <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-xs flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-1.5 font-medium text-slate-800">
+                      <FiCalendar className="w-3.5 h-3.5 text-slate-500" />
+                      <span>{appt.appointment_date || appt.date || "—"}</span>
+                      <span className="text-slate-300">|</span>
+                      <FiClock className="w-3.5 h-3.5 text-slate-500" />
+                      <span className="font-mono">{appt.formatted_time || appt.start_time || "—"}</span>
+                    </div>
+                    {isDueForCheckIn && (
+                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold bg-amber-50 text-amber-800 border border-amber-300">
+                        Due for Check-in
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex items-center justify-between gap-2 pt-1 border-t border-slate-200/60">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <FiUser className="w-3.5 h-3.5 text-slate-500 shrink-0" />
+                      <span className="font-semibold text-slate-900 truncate">
+                        {appt.doctor_name || appt.doctor?.name || "General Practitioner"}
+                      </span>
+                      {appt.doctor_specialty && (
+                        <span className="text-slate-400 text-[10.5px] truncate">
+                          ({appt.doctor_specialty})
+                        </span>
+                      )}
+                    </div>
+                    {(appt.cabin || appt.queue_cabin) && (
+                      <span className="text-[10px] font-bold text-[#126868] bg-[#126868]/10 px-1.5 py-0.5 rounded border border-[#126868]/20 shrink-0">
+                        {appt.cabin || appt.queue_cabin}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Payment Status & Quick Collect Fee */}
+                <div className="flex items-center justify-between gap-2 text-xs pt-0.5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-slate-500">Fee:</span>
+                    {appt.payment_status === "PAID" ? (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-slate-900 font-mono">
+                          ₹{appt.paid_amount ?? appt.consultation_fee ?? 500}
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold border bg-emerald-50 text-emerald-800 border-emerald-200">
+                          PAID
+                        </span>
+                        {appt.payment_method && (
+                          <span className="text-[10px] text-slate-400">({appt.payment_method})</span>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-bold text-rose-700 font-mono">
+                          ₹{appt.consultation_fee || 500}
+                        </span>
+                        <span className="px-1.5 py-0.2 rounded text-[10px] font-bold border bg-rose-50 text-rose-700 border-rose-200">
+                          UNPAID
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {appt.payment_status !== "PAID" && appt.status !== "CANCELLED" && (
+                    <button
+                      type="button"
+                      onClick={() => setCollectPaymentAppt(appt)}
+                      className="inline-flex items-center gap-1 px-2.5 py-1 rounded text-xs font-bold bg-[#126868] text-white hover:bg-[#0e5252] shadow-xs transition cursor-pointer"
+                    >
+                      <FiDollarSign size={12} />
+                      <span>Collect Fee</span>
+                    </button>
+                  )}
+                </div>
+
+                {/* 5. Mobile Action Buttons (Visible directly with Patient Name) */}
+                <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                  {/* Row 1: Primary actions */}
+                  {appt.status === "CONFIRMED" && !appt.queue_token ? (
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => handleCheckInQueue(appt)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#126868] text-white hover:bg-[#0e5252] shadow-xs transition cursor-pointer"
+                        title="Check In patient to Waiting Room Queue"
+                      >
+                        <FiUserCheck size={14} />
+                        <span>Check In</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const params = new URLSearchParams();
+                          if (appt.patient_id) params.set("patient_id", appt.patient_id);
+                          if (appt.doctor_id) params.set("doctor_id", appt.doctor_id);
+                          if (appt.id) params.set("appointment_id", appt.id);
+                          if (appt.patient_name) params.set("patient_name", appt.patient_name);
+                          if (appt.patient_phone) params.set("patient_phone", appt.patient_phone);
+                          navigate(`/consultations?${params.toString()}`);
+                        }}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition cursor-pointer"
+                        title="Open Doctor Consultation Workspace"
+                      >
+                        <FiExternalLink size={14} />
+                        <span>Consult</span>
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const params = new URLSearchParams();
+                        if (appt.patient_id) params.set("patient_id", appt.patient_id);
+                        if (appt.doctor_id) params.set("doctor_id", appt.doctor_id);
+                        if (appt.id) params.set("appointment_id", appt.id);
+                        if (appt.patient_name) params.set("patient_name", appt.patient_name);
+                        if (appt.patient_phone) params.set("patient_phone", appt.patient_phone);
+                        navigate(`/consultations?${params.toString()}`);
+                      }}
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition cursor-pointer"
+                      title="Open Doctor Consultation Workspace"
+                    >
+                      <FiExternalLink size={14} />
+                      <span>Open Consultation</span>
+                    </button>
+                  )}
+
+                  {/* Row 2: Secondary utility actions */}
+                  <div className="grid grid-cols-3 sm:grid-cols-5 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setPrintModalAppt(appt)}
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="Print OPD / Token Slip"
+                    >
+                      <FiPrinter size={12} className="text-slate-500" />
+                      <span>Slip</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={sendingWhatsAppId === appt.id}
+                      onClick={() => handleSendWhatsAppNotification(appt)}
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 shadow-xs transition cursor-pointer disabled:opacity-50"
+                      title="Send WhatsApp confirmation / reminder"
+                    >
+                      <FaWhatsapp size={12} className="text-emerald-600" />
+                      <span>{sendingWhatsAppId === appt.id ? "Sending" : "WhatsApp"}</span>
+                    </button>
+
+                    {appt.status !== "COMPLETED" && appt.status !== "CANCELLED" && (
+                      <button
+                        type="button"
+                        onClick={() => setRescheduleModalAppt(appt)}
+                        className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-amber-50 text-slate-700 hover:text-amber-800 border border-slate-200 shadow-xs transition cursor-pointer"
+                        title="Reschedule appointment"
+                      >
+                        <FiCalendar size={12} className="text-amber-600" />
+                        <span>Reschedule</span>
+                      </button>
+                    )}
+
+                    {appt.status !== "COMPLETED" && appt.status !== "CANCELLED" && (
+                      <button
+                        type="button"
+                        disabled={isUpdating}
+                        onClick={() => handleStatusChange(appt.id, "COMPLETED")}
+                        className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 shadow-xs transition cursor-pointer disabled:opacity-50"
+                        title="Mark as Completed"
+                      >
+                        <FiCheckCircle size={12} className="text-emerald-600" />
+                        <span>Complete</span>
+                      </button>
+                    )}
+
+                    {appt.status !== "CANCELLED" && appt.status !== "COMPLETED" && (
+                      <button
+                        type="button"
+                        disabled={isUpdating}
+                        onClick={() => handleStatusChange(appt.id, "CANCELLED")}
+                        className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 shadow-xs transition cursor-pointer disabled:opacity-50"
+                        title="Cancel Appointment"
+                      >
+                        <FiXCircle size={12} className="text-rose-500" />
+                        <span>Cancel</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Cards Pagination Control */}
+        <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs mt-3.5">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={tabFilteredAppointments.length}
+              pageSize={pageSize}
+              onPageChange={(p) => setCurrentPage(p)}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[10, 20, 50, 100]}
+              itemLabel="appointments"
+            />
+          </div>
+        </div>
+      </>
+    )}
     </section>
 
     {/* Printable OPD Appointment Slip Modal */}

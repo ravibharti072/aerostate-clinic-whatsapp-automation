@@ -72,6 +72,10 @@ export function AuthProvider({ children }) {
     await logoutUser();
   };
 
+  const updateCurrentUser = (updates) => {
+    setUser((prev) => (prev ? { ...prev, ...updates } : prev));
+  };
+
   const isSuperAdmin = (user?.role || "").toLowerCase() === "superadmin";
 
   return (
@@ -84,6 +88,7 @@ export function AuthProvider({ children }) {
         isSuperAdmin,
         login,
         logout,
+        updateCurrentUser,
       }}
     >
       {children}

@@ -418,12 +418,12 @@ export default function AppointmentEntryForm({ onCreated }) {
         <div className="flex flex-col gap-2.5 w-full">
           <label className="asr-field-label">Patient Details &amp; Contact *</label>
 
-          {/* Upper 3 Equally Sized Fields */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 w-full">
+          {/* Row 1: Full Name & Mobile Number (Side by side on tablet/desktop) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
             <div className="relative w-full">
               <input
                 type="text"
-                className="asr-input w-full"
+                className="asr-input w-full text-sm font-medium"
                 placeholder="Patient Full Name *"
                 value={patientName}
                 onChange={(e) => {
@@ -478,8 +478,8 @@ export default function AppointmentEntryForm({ onCreated }) {
               )}
             </div>
 
-            <div className="flex items-center w-full bg-white border border-[#cbd5e1] rounded-lg overflow-hidden focus-within:border-[#254d90] focus-within:ring-2 focus-within:ring-[#254d90]/20 transition" style={{ height: "44px" }}>
-              <span className="px-3.5 bg-slate-50 border-r border-[#cbd5e1] text-sm font-bold text-slate-600 font-mono select-none shrink-0 h-full flex items-center justify-center">
+            <div className="flex items-center w-full bg-white border border-[#cbd5e1] rounded-lg overflow-hidden focus-within:border-[#254d90] focus-within:ring-2 focus-within:ring-[#254d90]/20 transition" style={{ height: "42px" }}>
+              <span className="px-3 bg-slate-50 border-r border-[#cbd5e1] text-xs font-bold text-slate-600 font-mono select-none shrink-0 h-full flex items-center justify-center">
                 +91
               </span>
               <input
@@ -500,31 +500,32 @@ export default function AppointmentEntryForm({ onCreated }) {
                 required
               />
             </div>
+          </div>
+
+          {/* Row 2: Aadhaar & Address (Side by side) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 w-full">
             <input
               type="text"
-              className="asr-input w-full"
+              className="asr-input w-full text-sm font-medium"
               placeholder="Aadhaar No. (Optional)"
               value={patientAadhaar}
               onChange={(e) => setPatientAadhaar(e.target.value)}
               maxLength={14}
             />
+            <input
+              type="text"
+              className="asr-input w-full text-sm font-medium"
+              placeholder="Address (Optional)"
+              value={patientAddress}
+              onChange={(e) => setPatientAddress(e.target.value)}
+            />
           </div>
 
-          {/* Lower Row: Address, Gender, Age, Blood Group & Entry Date */}
-          <div className="flex flex-col sm:flex-row items-center gap-3 w-full">
-            <div className="flex-1 w-full min-w-[180px]">
-              <input
-                type="text"
-                className="asr-input w-full"
-                placeholder="Address (Optional)"
-                value={patientAddress}
-                onChange={(e) => setPatientAddress(e.target.value)}
-              />
-            </div>
-
-            <div className="w-full sm:w-[125px] shrink-0">
+          {/* Row 3: Gender, Age, Blood Group & Date (4-Col or 2x2 grid on mobile) */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 w-full">
+            <div>
               <select
-                className="asr-input w-full cursor-pointer text-sm font-medium"
+                className="asr-input w-full cursor-pointer text-xs sm:text-sm font-medium"
                 value={patientGender}
                 onChange={(e) => setPatientGender(e.target.value)}
                 title="Patient Gender"
@@ -536,10 +537,10 @@ export default function AppointmentEntryForm({ onCreated }) {
               </select>
             </div>
 
-            <div className="w-full sm:w-[95px] shrink-0">
+            <div>
               <input
                 type="number"
-                className="asr-input w-full text-sm font-medium"
+                className="asr-input w-full text-xs sm:text-sm font-medium"
                 placeholder="Age (Yrs)"
                 value={patientAge}
                 onChange={(e) => setPatientAge(e.target.value)}
@@ -549,9 +550,9 @@ export default function AppointmentEntryForm({ onCreated }) {
               />
             </div>
 
-            <div className="w-full sm:w-[115px] shrink-0">
+            <div>
               <select
-                className="asr-input w-full cursor-pointer text-sm font-medium"
+                className="asr-input w-full cursor-pointer text-xs sm:text-sm font-medium"
                 value={patientBloodGroup}
                 onChange={(e) => setPatientBloodGroup(e.target.value)}
                 title="Patient Blood Group (Optional)"
@@ -568,13 +569,12 @@ export default function AppointmentEntryForm({ onCreated }) {
               </select>
             </div>
 
-            <div className="w-full sm:w-[180px] shrink-0">
-              <div className="asr-date-box" title="Appointment Entry Date">
+            <div>
+              <div className="asr-date-box w-full" title="Appointment Entry Date">
                 <div className="asr-date-inner">
-                  <FiCalendar className="text-slate-500 shrink-0" size={16} />
                   <input
                     type="date"
-                    className="asr-date-input"
+                    className="asr-date-input text-xs sm:text-sm"
                     value={appointmentDate}
                     min={todayIso}
                     onChange={(e) => {
@@ -644,148 +644,145 @@ export default function AppointmentEntryForm({ onCreated }) {
           )}
         </div>
 
-        {/* Doctor & Consultation Details Table */}
-        <div className="asr-table-block">
-          <div className="asr-table-bar">
-            <div className="asr-table-bar-left">
-              <span className="asr-table-title">Doctor &amp; Consultation Details</span>
-              <span className="asr-items-count-tag" style={{ background: "#e0f2fe", color: "#0369a1", borderColor: "#bae6fd" }}>
+        {/* Doctor & Consultation Details - NO Side Scroll, Clean Responsive Grid */}
+        <div className="asr-table-block bg-slate-50/70 p-3.5 sm:p-4 rounded-xl border border-slate-200">
+          <div className="asr-table-bar mb-3">
+            <div className="asr-table-bar-left flex items-center justify-between w-full">
+              <span className="asr-table-title text-sm font-bold text-slate-800">Doctor &amp; Consultation Details</span>
+              <span className="asr-items-count-tag text-xs" style={{ background: "#e0f2fe", color: "#0369a1", borderColor: "#bae6fd" }}>
                 1 Doctor Consultation
               </span>
             </div>
           </div>
 
-          <div className="asr-table-scroll-container">
-            <table className="asr-items-table">
-              <thead>
-                <tr>
-                  <th style={{ width: "24%" }}>DOCTOR</th>
-                  <th style={{ width: "15%", textAlign: "center" }}>TIME SLOT</th>
-                  <th style={{ width: "19%" }}>VISIT TYPE</th>
-                  <th style={{ width: "16%" }}>CABIN / ROOM</th>
-                  <th style={{ width: "14%" }}>PAYMENT</th>
-                  <th style={{ width: "12%", textAlign: "right" }}>CONSULTATION FEE</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td>
-                    <select
-                      className="asr-table-select"
-                      value={doctorId}
-                      onChange={(e) => handleDoctorChange(e.target.value)}
-                      required
-                    >
-                      <option value="">Select Doctor...</option>
-                      {doctors.map((doc) => (
-                        <option key={doc.id} value={doc.id}>
-                          {doc.name} (₹{doc.consultation_fee ?? 500})
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 w-full">
+            {/* 1. Doctor Selection (Full Width) */}
+            <div className="sm:col-span-2">
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                DOCTOR / SPECIALIST *
+              </label>
+              <select
+                className="asr-input w-full text-sm font-medium"
+                value={doctorId}
+                onChange={(e) => handleDoctorChange(e.target.value)}
+                required
+              >
+                <option value="">Select Doctor...</option>
+                {doctors.map((doc) => (
+                  <option key={doc.id} value={doc.id}>
+                    {doc.name} ({doc.specialization || "Specialist"} • ₹{doc.consultation_fee ?? 500})
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                  <td style={{ textAlign: "center" }}>
-                    <select
-                      className="asr-table-select"
-                      value={slot}
-                      onChange={(e) => setSlot(e.target.value)}
-                      required
-                      disabled={loadingSlots}
-                    >
-                      {loadingSlots ? (
-                        <option value="" disabled>Loading slots...</option>
-                      ) : slotsList && slotsList.length > 0 ? (
-                        slotsList.map((s, idx) => (
-                          <option key={idx} value={s}>
-                            {s}
-                          </option>
-                        ))
-                      ) : (
-                        <option value="" disabled>
-                          {appointmentDate < todayIso
-                            ? "Past date not allowed"
-                            : appointmentDate === todayIso
-                            ? "No upcoming slots today"
-                            : "No slots available"}
-                        </option>
-                      )}
-                    </select>
-                  </td>
+            {/* 2. Time Slot & Visit Type (Side by Side) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                TIME SLOT *
+              </label>
+              <select
+                className="asr-input w-full text-sm font-medium"
+                value={slot}
+                onChange={(e) => setSlot(e.target.value)}
+                required
+                disabled={loadingSlots}
+              >
+                {loadingSlots ? (
+                  <option value="" disabled>Loading slots...</option>
+                ) : slotsList && slotsList.length > 0 ? (
+                  slotsList.map((s, idx) => (
+                    <option key={idx} value={s}>
+                      {s}
+                    </option>
+                  ))
+                ) : (
+                  <option value="" disabled>
+                    {appointmentDate < todayIso
+                      ? "Past date not allowed"
+                      : appointmentDate === todayIso
+                      ? "No upcoming slots today"
+                      : "No slots available"}
+                  </option>
+                )}
+              </select>
+            </div>
 
-                  <td>
-                    <select
-                      className="asr-table-select"
-                      value={visitType}
-                      onChange={(e) => handleVisitTypeChange(e.target.value)}
-                      title="Consultation Visit Type"
-                    >
-                      <option value="New Consultation">New Consultation</option>
-                      <option value="Follow-up Visit">Follow-up Visit (Free)</option>
-                      <option value="Routine Checkup">Routine Checkup</option>
-                      <option value="Emergency / Urgent">Emergency / Urgent</option>
-                    </select>
-                  </td>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                VISIT TYPE
+              </label>
+              <select
+                className="asr-input w-full text-sm font-medium"
+                value={visitType}
+                onChange={(e) => handleVisitTypeChange(e.target.value)}
+                title="Consultation Visit Type"
+              >
+                <option value="New Consultation">New Consultation</option>
+                <option value="Follow-up Visit">Follow-up Visit (Free)</option>
+                <option value="Routine Checkup">Routine Checkup</option>
+                <option value="Emergency / Urgent">Emergency / Urgent</option>
+              </select>
+            </div>
 
-                  <td>
-                    <select
-                      className="asr-table-select"
-                      value={cabin}
-                      onChange={(e) => setCabin(e.target.value)}
-                      title="Assigned Examination Room / Cabin"
-                    >
-                      {cabins.map((c) => (
-                        <option key={c.id || c.name} value={c.name}>
-                          {c.name}
-                        </option>
-                      ))}
-                    </select>
-                  </td>
+            {/* 3. Cabin & Payment & Fee (Side by Side) */}
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                CABIN / ROOM
+              </label>
+              <select
+                className="asr-input w-full text-sm font-medium"
+                value={cabin}
+                onChange={(e) => setCabin(e.target.value)}
+                title="Assigned Examination Room / Cabin"
+              >
+                {cabins.map((c) => (
+                  <option key={c.id || c.name} value={c.name}>
+                    {c.name}
+                  </option>
+                ))}
+              </select>
+            </div>
 
-                  <td>
-                    <select
-                      className="asr-table-select"
-                      value={paymentMethod}
-                      onChange={(e) => setPaymentMethod(e.target.value)}
-                      title="Consultation Fee Payment"
-                    >
-                      <option value="UPI">Paid (UPI)</option>
-                      <option value="Cash">Paid (Cash)</option>
-                      <option value="Card">Paid (Card)</option>
-                      <option value="Pending">Pay Later (Pending)</option>
-                    </select>
-                  </td>
+            <div>
+              <label className="block text-xs font-bold text-slate-600 mb-1">
+                PAYMENT &amp; FEE
+              </label>
+              <div className="flex items-center gap-2">
+                <select
+                  className="asr-input flex-1 text-sm font-medium"
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value)}
+                  title="Consultation Fee Payment"
+                >
+                  <option value="UPI">Paid (UPI)</option>
+                  <option value="Cash">Paid (Cash)</option>
+                  <option value="Card">Paid (Card)</option>
+                  <option value="Pending">Pay Later (Pending)</option>
+                </select>
 
-                  <td style={{ textAlign: "right" }}>
-                    <div className="inline-flex items-center justify-end relative" style={{ width: "105px" }}>
-                      <span className="absolute left-2.5 text-slate-400 font-bold text-xs pointer-events-none">₹</span>
-                      <input
-                        type="number"
-                        min="0"
-                        step="50"
-                        value={effectiveFee}
-                        onChange={(e) => {
-                          const val = e.target.value;
-                          setCustomFee(val === "" ? 0 : Number(val));
-                        }}
-                        className="asr-compact-input text-right font-bold text-slate-900"
-                        style={{
-                          height: "32px",
-                          paddingLeft: "20px",
-                          paddingRight: "8px",
-                          width: "100%",
-                          fontSize: "13px",
-                          background: effectiveFee === 0 ? "#f0fdf4" : "#ffffff",
-                          color: effectiveFee === 0 ? "#166534" : "#0f172a",
-                          borderColor: effectiveFee === 0 ? "#bbf7d0" : "#cbd5e1",
-                        }}
-                        title="Doctor standard rate (editable for concession / custom fee)"
-                      />
-                    </div>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
+                <div className="relative w-28 shrink-0">
+                  <span className="absolute left-2.5 top-2.5 text-slate-400 font-bold text-xs pointer-events-none">₹</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="50"
+                    value={effectiveFee}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setCustomFee(val === "" ? 0 : Number(val));
+                    }}
+                    className="asr-input w-full pl-6 pr-2 text-right font-bold text-sm"
+                    style={{
+                      background: effectiveFee === 0 ? "#f0fdf4" : "#ffffff",
+                      color: effectiveFee === 0 ? "#166534" : "#0f172a",
+                      borderColor: effectiveFee === 0 ? "#bbf7d0" : "#cbd5e1",
+                    }}
+                    title="Doctor standard rate (editable for concession / custom fee)"
+                  />
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 

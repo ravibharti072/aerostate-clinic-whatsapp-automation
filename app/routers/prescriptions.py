@@ -9,9 +9,9 @@ from app.models import Prescription, Patient, Doctor, Appointment, Consultation,
 from app.services.whatsapp import whatsapp_client
 from app.services.messages import message_service
 from app.config import settings
-from app.security import require_admin
+from app.security import require_staff
 
-router = APIRouter(prefix="/admin/prescriptions", tags=["Prescriptions & EMR"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/prescriptions", tags=["Prescriptions & EMR"], dependencies=[Depends(require_staff)])
 
 
 class MedicineItem(BaseModel):
@@ -651,15 +651,18 @@ async def create_prescription(payload: PrescriptionCreate, db: Session = Depends
 
     # Optional 1-click WhatsApp delivery
     whatsapp_sent = False
+    is_queued = False
     if payload.send_whatsapp and patient.phone:
         try:
             msg_text = format_prescription_whatsapp(rx, patient, doctor, meds_list)
-            await whatsapp_client.send_text(to=patient.phone, text=msg_text)
+            res = await whatsapp_client.send_text(to=patient.phone, text=msg_text)
+            is_queued = bool(res and res.get("status") == "queued_offline")
+            body_to_log = f"[Queued Offline] {msg_text}" if is_queued else msg_text
             message_service.log_message(
                 db=db,
                 phone=patient.phone,
                 sender="clinic",
-                body=msg_text,
+                body=body_to_log,
                 patient_name=patient.name,
                 message_type="prescription",
             )
@@ -667,8 +670,9 @@ async def create_prescription(payload: PrescriptionCreate, db: Session = Depends
         except Exception as e:
             print("Failed to dispatch WhatsApp prescription:", e)
 
+    delivery_status_msg = " and queued for WhatsApp delivery" if is_queued else (" and sent to WhatsApp" if whatsapp_sent else "")
     return {
-        "message": (f"Prescription #{rx.id} updated successfully" if is_update else f"Prescription #{rx.id} registered with Clinical Encounter successfully") + (" and sent to WhatsApp" if whatsapp_sent else ""),
+        "message": (f"Prescription #{rx.id} updated successfully" if is_update else f"Prescription #{rx.id} registered with Clinical Encounter successfully") + delivery_status_msg,
         "id": rx.id,
         "prescription_id": rx.id,
         "prescription_uid": rx.prescription_uid,

@@ -711,25 +711,50 @@ export default function PlaceDiagnosticOrderModal({
                   </div>
 
                   {paymentMode === "Cash" ? (
-                    <div>
-                      <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                        Cash Tendered &amp; Change Return
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Amount received from patient..."
-                          value={cashTendered}
-                          onChange={(e) => setCashTendered(e.target.value)}
-                          className="w-1/2 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                        />
-                        <div className="w-1/2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
-                          <span className="text-[10px] text-slate-400 font-sans">Change:</span>
-                          <span className="text-emerald-700 font-bold">
-                            ₹{Math.max(0, (parseFloat(cashTendered) || 0) - totalSelectedPrice)}
+                    <div className="grid grid-cols-2 gap-2.5">
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                          Cash Tendered (₹)
+                        </label>
+                        <div className="relative">
+                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs select-none">
+                            ₹
                           </span>
+                          <input
+                            type="number"
+                            min="0"
+                            placeholder="Amount received..."
+                            value={cashTendered}
+                            onChange={(e) => setCashTendered(e.target.value)}
+                            className="w-full pl-6 pr-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                            style={{ height: "34px" }}
+                          />
                         </div>
+                      </div>
+                      <div>
+                        <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                          Change to Return (₹)
+                        </label>
+                        {(() => {
+                          const change = Math.max(0, (parseFloat(cashTendered) || 0) - totalSelectedPrice);
+                          return (
+                            <div
+                              className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center justify-between ${
+                                change > 0
+                                  ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                  : "bg-slate-50 border-slate-200 text-slate-500"
+                              }`}
+                              style={{ height: "34px" }}
+                            >
+                              <span className="text-[11px] font-medium font-sans">
+                                {change > 0 ? "Return:" : "Change:"}
+                              </span>
+                              <span className={`text-xs font-bold font-mono ${change > 0 ? "text-emerald-700" : "text-slate-700"}`}>
+                                ₹{change.toLocaleString()}
+                              </span>
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   ) : (

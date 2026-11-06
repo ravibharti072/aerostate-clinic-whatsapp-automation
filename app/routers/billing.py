@@ -11,9 +11,9 @@ from app.services.whatsapp import whatsapp_client
 from app.services.messages import message_service
 from app.services.pdf_service import generate_invoice_pdf, generate_diagnostic_receipt_pdf, build_pdf_filename
 from app.config import settings
-from app.security import require_admin
+from app.security import require_staff
 
-router = APIRouter(prefix="/admin/billing", tags=["Billing & Invoicing"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/billing", tags=["Billing & Invoicing"], dependencies=[Depends(require_staff)])
 
 
 class InvoiceItem(BaseModel):
@@ -565,15 +565,18 @@ async def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
 
     # Optional 1-click WhatsApp receipt dispatch
     whatsapp_sent = False
+    is_queued = False
     if payload.send_whatsapp and patient.phone:
         try:
             msg_text = format_invoice_whatsapp(inv, patient, items_list)
-            await whatsapp_client.send_text(to=patient.phone, text=msg_text)
+            res = await whatsapp_client.send_text(to=patient.phone, text=msg_text)
+            is_queued = bool(res and res.get("status") == "queued_offline")
+            body_to_log = f"[Queued Offline] {msg_text}" if is_queued else msg_text
             message_service.log_message(
                 db=db,
                 phone=patient.phone,
                 sender="clinic",
-                body=msg_text,
+                body=body_to_log,
                 patient_name=patient.name,
                 message_type="invoice",
             )
@@ -581,8 +584,9 @@ async def create_invoice(payload: InvoiceCreate, db: Session = Depends(get_db)):
         except Exception as e:
             print("Failed to dispatch WhatsApp invoice:", e)
 
+    receipt_msg = " and receipt queued for WhatsApp sync" if is_queued else (" and receipt dispatched to WhatsApp" if whatsapp_sent else "")
     return {
-        "message": "Invoice generated successfully",
+        "message": f"Invoice generated successfully{receipt_msg}",
         "invoice_id": inv.id,
         "invoice_number": inv.invoice_number,
         "encounter_id": inv.encounter_id,

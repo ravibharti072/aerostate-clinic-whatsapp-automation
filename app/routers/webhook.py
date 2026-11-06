@@ -95,13 +95,19 @@ async def verify_webhook(
 ):
     """
     Verification endpoint required by Meta.
-    Validates either the global verify token or any individual clinic's token.
+    Validates either the global verify token or any individual clinic's token using constant-time comparison.
     """
-    is_valid = (hub_verify_token == settings.VERIFY_TOKEN)
+    is_valid = bool(
+        hub_verify_token
+        and settings.VERIFY_TOKEN
+        and hmac.compare_digest(hub_verify_token, settings.VERIFY_TOKEN)
+    )
     if not is_valid and hub_verify_token:
-        matched = db.query(Clinic).filter(Clinic.verify_token == hub_verify_token, Clinic.is_active == True).first()
-        if matched:
-            is_valid = True
+        matched = db.query(Clinic).filter(Clinic.is_active == True).all()
+        for cln in matched:
+            if cln.verify_token and hmac.compare_digest(hub_verify_token, cln.verify_token):
+                is_valid = True
+                break
 
     if hub_mode == "subscribe" and is_valid:
         logger.info("Meta Webhook verified successfully!")
@@ -120,11 +126,16 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     body_bytes = await request.body()
 
     # Verify Meta App Secret signature if configured
-    if settings.META_APP_SECRET and settings.META_APP_SECRET.strip():
-        signature_header = request.headers.get("x-hub-signature-256")
-        if not verify_meta_webhook_signature(body_bytes, signature_header, settings.META_APP_SECRET.strip()):
+    app_secret = (settings.META_APP_SECRET or "").strip()
+    signature_header = request.headers.get("x-hub-signature-256")
+    if app_secret:
+        if not verify_meta_webhook_signature(body_bytes, signature_header, app_secret):
             logger.warning("Rejected webhook request: invalid or missing X-Hub-Signature-256")
             return Response(content="Invalid signature", status_code=403)
+    else:
+        logger.warning(
+            "SECURITY WARNING: META_APP_SECRET is not configured. Webhook payload signature could not be verified."
+        )
 
     try:
         payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
@@ -478,6 +489,34 @@ async def handle_user_text(
         await send_booking_mode_menu(db, sender_phone, user_name, ctx=ctx)
         return
 
+    # Check for ABHA Health ID inquiries
+    if "abha" in text_lower or "ayushman" in text_lower or "health id" in text_lower:
+        patient = booking_service.find_patient_by_phone(db, sender_phone, name=user_name)
+        if patient and patient.abha_number:
+            reply = (
+                f"🇮🇳 *YOUR OFFICIAL ABHA HEALTH ID*\n\n"
+                f"Hello *{patient.name}*,\n"
+                f"Your Government ABHA account is verified and linked with {ctx.name}:\n\n"
+                f"💳 *ABHA Number:* {patient.abha_number}\n"
+                f"🔗 *ABHA Address:* {patient.abha_address}\n"
+                f"✅ *Status:* Government Verified (ABDM M1)\n\n"
+                f"All your prescriptions and lab reports are linked to your ABHA."
+            )
+        else:
+            reply = (
+                f"🇮🇳 *AYUSHMAN BHARAT DIGITAL MISSION (ABDM)*\n\n"
+                f"Hello *{user_name}*,\n"
+                f"Your 14-digit ABHA Health ID is not yet linked with our clinic.\n\n"
+                f"You can create or verify your ABHA ID at our clinic reception desk, or by visiting our patient portal."
+            )
+        buttons = [
+            {"id": "btn_book", "title": "📅 Book Appointment"},
+            {"id": "btn_menu", "title": "🏠 Main Menu"},
+        ]
+        await ctx.send_quick_reply_buttons(to=sender_phone, body_text=reply, buttons=buttons)
+        message_service.log_message(db, sender_phone, "bot", reply, user_name, clinic_id=ctx.clinic_id)
+        return
+
     # If the user is currently prompted to describe their symptoms
     if session.step == "AWAITING_SYMPTOMS":
         await handle_symptom_text(db, sender_phone, user_name, text, ctx=ctx)
@@ -773,16 +812,41 @@ async def handle_user_list_selection(
 
         symptom_line = f"🩺 *Reason / Symptoms:* {symptoms}\n" if symptoms else ""
 
+        # Generate automated Razorpay Payment Link if configured
+        pay_url_section = ""
+        try:
+            from app.services.razorpay_service import razorpay_service
+            if razorpay_service.is_configured:
+                link_obj = await razorpay_service.create_payment_link(
+                    amount_rupees=float(doc_fee),
+                    description=f"Consultation Fee - Dr. {doctor.name} ({date_str})",
+                    customer_name=user_name,
+                    customer_phone=sender_phone,
+                    appointment_id=appointment.id,
+                    clinic_id=ctx.clinic_id,
+                )
+                if link_obj and link_obj.get("payment_url"):
+                    p_url = link_obj["payment_url"]
+                    pay_url_section = (
+                        f"\n⚡ *INSTANT 100% ONLINE CONFIRMATION (UPI / GPay / PhonePe):*\n"
+                        f"👉 Pay ₹{doc_fee} here to confirm immediately:\n"
+                        f"{p_url}\n"
+                        f"_(Your slot is 100% verified automatically—no reception counter payment needed!)_\n"
+                    )
+        except Exception as e:
+            logger.warning(f"Could not generate Razorpay booking link: {e}")
+
         confirmation_text = (
-            f"🎉 *APPOINTMENT CONFIRMED!*\n\n"
+            f"🎉 *APPOINTMENT BOOKED!*\n\n"
             f"📋 *Booking ID:* #{appointment.id}\n"
             f"👤 *Patient:* {user_name}\n"
             f"🩺 *Doctor:* {doctor.name} ({doctor.specialization})\n"
             f"{symptom_line}"
             f"📅 *Date:* {date_str}\n"
             f"⏰ *Time:* {appointment.start_time} - {appointment.end_time}\n"
-            f"💳 *Consultation Fee:* ₹{doc_fee} *(To be paid at clinic reception)*\n"
-            f"💵 *Payment Status:* ⏳ Unpaid (Pay on arrival)\n"
+            f"💳 *Consultation Fee:* ₹{doc_fee}\n"
+            f"💵 *Payment Status:* ⏳ Pending Verification\n"
+            f"{pay_url_section}\n"
             f"📍 *Clinic:* {ctx.name}\n"
             f"🏢 *Address:* {ctx.address}\n\n"
             f"Please arrive 10 minutes early. To cancel or check your bookings anytime, send 'my appointments'."

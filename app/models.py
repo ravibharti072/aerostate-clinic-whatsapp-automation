@@ -25,6 +25,11 @@ class Clinic(Base):
     whatsapp_token = Column(Text, nullable=True)  # Dedicated token if clinic has dedicated WABA, else None (uses master)
     verify_token = Column(String(100), nullable=True)
 
+    # SaaS Subscription & Licensing Model
+    subscription_plan = Column(String(50), default="Monthly")  # Monthly, Quarterly, Annual, Custom, Trial
+    subscription_expiry = Column(DateTime, nullable=True)
+    subscription_status = Column(String(30), default="Active")  # Active, Trial, Expired, Suspended
+
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
@@ -85,6 +90,11 @@ class Patient(Base):
     emergency_name = Column(String(100), nullable=True)
     emergency_phone = Column(String(30), nullable=True)
     aadhaar_number = Column(String(30), nullable=True)  # Optional 12-digit UIDAI number
+    abha_number = Column(String(30), unique=True, index=True, nullable=True)  # 14-digit ABHA (e.g. 91-1234-5678-9012)
+    abha_address = Column(String(100), unique=True, index=True, nullable=True)  # e.g. patient@abdm
+    abha_status = Column(String(30), default="UNLINKED")  # UNLINKED, VERIFIED, PENDING
+    abha_profile_photo = Column(Text, nullable=True)  # Base64 photo string from NHA
+    abha_meta = Column(Text, default="{}")  # JSON metadata: auth tokens, gender, dob, state, health locker info
     registration_source = Column(String(30), default="Direct")  # WhatsApp, Direct
     allergies = Column(Text, default="[]")  # JSON: [{"allergen": "Penicillin", "severity": "High", "reaction": "Hives"}]
     chronic_conditions = Column(Text, default="[]")  # JSON list
@@ -499,3 +509,45 @@ class Cabin(Base):
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+
+
+class OfflineQueue(Base):
+    """Offline Outbox for WhatsApp messages and requests generated during disconnected operation."""
+    __tablename__ = "offline_queue"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=True)
+    queue_type = Column(String(50), default="whatsapp_message", index=True)  # whatsapp_payload, whatsapp_message, prescription, invoice
+    recipient = Column(String(50), nullable=True, index=True)
+    payload = Column(Text, nullable=False)  # JSON payload
+    status = Column(String(30), default="PENDING", index=True)  # PENDING, PROCESSING, SENT, FAILED
+    retry_count = Column(Integer, default=0)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    processed_at = Column(DateTime, nullable=True)
+
+
+class SyncRecord(Base):
+    """Delta change-log tracking local creations/updates for two-way cloud sync."""
+    __tablename__ = "sync_records"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, nullable=True)
+    entity_type = Column(String(50), index=True, nullable=False)  # patient, appointment, consultation, prescription, invoice, lab_order, whatsapp_message
+    entity_uid = Column(String(100), index=True, nullable=True)
+    entity_id = Column(Integer, nullable=True)
+    action = Column(String(20), default="UPSERT")  # UPSERT, DELETE
+    payload = Column(Text, nullable=False)  # JSON snapshot
+    status = Column(String(30), default="PENDING", index=True)  # PENDING, SYNCED, FAILED
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    synced_at = Column(DateTime, nullable=True)
+
+
+class SyncMeta(Base):
+    """System-level sync timestamps and configuration persistence."""
+    __tablename__ = "sync_meta"
+
+    id = Column(Integer, primary_key=True, index=True)
+    key = Column(String(100), unique=True, index=True, nullable=False)
+    value = Column(Text, nullable=True)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)

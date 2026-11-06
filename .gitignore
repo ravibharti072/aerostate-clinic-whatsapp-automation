@@ -62,3 +62,10 @@ frontend/coverage/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# Executables & Binaries
+*.exe
+*.msi
+*.apk
+*.aab
+

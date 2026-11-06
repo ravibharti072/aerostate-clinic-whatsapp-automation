@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { FiArrowLeft, FiClock } from "react-icons/fi";
+import SyncStatusBadge from "../SyncStatusBadge";
 import "./portalHeader.css";
 
 export default function PortalHeader({
@@ -11,6 +12,8 @@ export default function PortalHeader({
   rightAction,
   isDashboard = false,
   showDateTime = false,
+  className = "",
+  actionsBelowOnMobile = true,
 }) {
   const [currentDate, setCurrentDate] = useState(new Date());
   const shouldShowDateTime = isDashboard || showDateTime;
@@ -38,7 +41,11 @@ export default function PortalHeader({
   });
 
   return (
-    <header className="portal-header-card">
+    <header
+      className={`portal-header-card ${className} ${
+        actionsBelowOnMobile ? "portal-header-actions-below" : ""
+      }`}
+    >
       <div className="portal-header-left">
         {showBack && onBack && (
           <button type="button" className="portal-back-btn" onClick={onBack}>
@@ -56,26 +63,36 @@ export default function PortalHeader({
         <div className="portal-header-text">
           {kicker && <span className="portal-kicker">{kicker}</span>}
           <h1>{title}</h1>
+          <div className="portal-header-sync-left">
+            <SyncStatusBadge />
+            {actionsBelowOnMobile && rightAction && (
+              <div className="portal-header-mobile-action-below">
+                {rightAction}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {(shouldShowDateTime || rightAction) && (
-        <div className="portal-header-right">
-          {rightAction}
+      <div
+        className={`portal-header-right ${
+          actionsBelowOnMobile ? "portal-header-right-desktop-only" : ""
+        }`}
+      >
+        {rightAction}
 
-          {shouldShowDateTime && (
-            <div className="portal-header-time-widget">
-              <div className="portal-time-icon-box">
-                <FiClock size={16} />
-              </div>
-              <div className="portal-time-text">
-                <span className="portal-time-date">{formattedDate}</span>
-                <span className="portal-time-clock">{formattedTime}</span>
-              </div>
+        {shouldShowDateTime && (
+          <div className="portal-header-time-widget">
+            <div className="portal-time-icon-box">
+              <FiClock size={16} />
             </div>
-          )}
-        </div>
-      )}
+            <div className="portal-time-text">
+              <span className="portal-time-date">{formattedDate}</span>
+              <span className="portal-time-clock">{formattedTime}</span>
+            </div>
+          </div>
+        )}
+      </div>
     </header>
   );
 }

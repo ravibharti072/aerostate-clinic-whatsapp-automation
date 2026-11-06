@@ -20,6 +20,7 @@ class UserCreateRequest(BaseModel):
 
 
 class UserUpdateRequest(BaseModel):
+    username: Optional[str] = None
     name: Optional[str] = None
     role: Optional[str] = None
     clinic_id: Optional[int] = None
@@ -148,10 +149,20 @@ def update_user(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
+    if payload.username and payload.username.strip():
+        new_username = payload.username.strip().lower()
+        if new_username != user.username.lower():
+            if len(new_username) < 3:
+                raise HTTPException(status_code=400, detail="Username must be at least 3 characters")
+            existing = db.query(User).filter(func.lower(User.username) == new_username, User.id != user.id).first()
+            if existing:
+                raise HTTPException(status_code=400, detail=f"Username '{new_username}' is already in use by another account")
+            user.username = new_username
+
     if user.id == current_admin.id and payload.role and payload.role.lower() != "superadmin":
         raise HTTPException(status_code=400, detail="Cannot demote your own SuperAdmin account")
 
-    if payload.name is not None:
+    if payload.name is not None and payload.name.strip():
         user.name = payload.name.strip()
     if payload.role is not None:
         user.role = "SuperAdmin" if payload.role.strip().lower() == "superadmin" else "Client"
@@ -162,7 +173,9 @@ def update_user(
             raise HTTPException(status_code=400, detail="Cannot deactivate your own active session")
         user.is_active = payload.is_active
     if payload.password and payload.password.strip():
-        user.password_hash = hash_password(payload.password)
+        if len(payload.password.strip()) < 4:
+            raise HTTPException(status_code=400, detail="Password must be at least 4 characters")
+        user.password_hash = hash_password(payload.password.strip())
 
     db.commit()
     db.refresh(user)

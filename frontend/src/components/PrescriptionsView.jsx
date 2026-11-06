@@ -24,7 +24,9 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiExternalLink,
-  FiPhone
+  FiPhone,
+  FiList,
+  FiGrid
 } from "react-icons/fi";
 import { FaWhatsapp } from "react-icons/fa";
 import PortalHeader from "./portalheader/PortalHeader";
@@ -58,6 +60,7 @@ export default function PrescriptionsView() {
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [updatingRxId, setUpdatingRxId] = useState(null);
+  const [desktopViewMode, setDesktopViewMode] = useState("table"); // 'table' | 'cards'
 
   // Sub-Section Tabs (Pending Dispense / Dispensed / Outside Chemist / All)
   const initialTab = searchParams.get("tab") || "pending";
@@ -817,14 +820,37 @@ export default function PrescriptionsView() {
           />
 
           <div className="dir-toolbar-right">
-            <button
-              type="button"
-              onClick={handleSearchSubmit}
-              className="btn-submit"
-              style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
-            >
-              Search
-            </button>
+            {/* Desktop View Switcher: 1 at a time (Table vs Cards) */}
+            <div className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5" style={{ height: "34px" }}>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("table")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Spreadsheet List View"
+              >
+                <FiList size={13} />
+                <span>List View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("cards")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "cards"
+                    ? "bg-[#254d90] text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Responsive Cards View"
+              >
+                <FiGrid size={13} />
+                <span>Cards View</span>
+              </button>
+            </div>
 
             {search && (
               <button
@@ -877,7 +903,10 @@ export default function PrescriptionsView() {
             )}
           </div>
         ) : (
-          <div className="dir-table-wrapper">
+          <>
+            {/* Desktop View: Full 13-Column Horizontal Scroll Table (1 at a time when desktopViewMode === 'table') */}
+            {desktopViewMode === "table" && (
+              <div className="dir-table-wrapper prescriptions-desktop-table hidden md:flex">
             <div className="dir-scroll-bar-header">
               <span className="dir-scroll-hint">Master Prescription Records (Scroll horizontally to view all columns)</span>
               <div className="flex items-center gap-3">
@@ -960,7 +989,7 @@ export default function PrescriptionsView() {
                       <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                         <div className="flex flex-col items-start gap-1">
                           {rx.encounter_uid ? (
-                            <span className="font-mono text-purple-700 bg-purple-50 px-2 py-0.5 rounded font-semibold border border-purple-200">
+                            <span className="font-mono text-[#126868] bg-[#126868]/10 px-2 py-0.5 rounded font-semibold border border-[#126868]/30">
                               {rx.encounter_uid}
                             </span>
                           ) : (
@@ -1106,7 +1135,7 @@ export default function PrescriptionsView() {
                           if (isAllOutside) {
                             return (
                               <span
-                                className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold border bg-purple-50 text-purple-700 border-purple-200"
+                                className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold border bg-slate-100 text-slate-700 border-slate-300"
                                 style={{ fontSize: "11px" }}
                               >
                                 <span>Outside Chemist</span>
@@ -1140,7 +1169,7 @@ export default function PrescriptionsView() {
                                   <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
                                   <span>Pending Clinic ({clinicCount})</span>
                                 </span>
-                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold border bg-purple-50 text-purple-700 border-purple-200 text-[10px]">
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-semibold border bg-slate-100 text-slate-700 border-slate-300 text-[10px]">
                                   <span>+ {outsideCount} Outside Chemist</span>
                                 </span>
                               </div>
@@ -1151,11 +1180,11 @@ export default function PrescriptionsView() {
                           if (rx.is_finalised === false || rx.is_dispensable === false) {
                             return (
                               <span
-                                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold border bg-purple-50 text-purple-700 border-purple-200"
+                                className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold border bg-slate-100 text-slate-700 border-slate-300"
                                 style={{ fontSize: "11px" }}
                                 title="Draft prescription linked to active consultation. Dispense unlocked upon doctor Finalize & Sign."
                               >
-                                <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                                <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
                                 <span>In Consultation (Draft)</span>
                               </span>
                             );
@@ -1302,10 +1331,10 @@ export default function PrescriptionsView() {
                               <button
                                 type="button"
                                 onClick={() => handleEditPrescription(rx)}
-                                className="w-full inline-flex items-center justify-center gap-1 px-1.5 py-1 text-[11px] font-semibold rounded bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-700 border border-slate-200 hover:border-indigo-300 shadow-xs transition cursor-pointer"
+                                className="w-full inline-flex items-center justify-center gap-1 px-1.5 py-1 text-[11px] font-semibold rounded bg-white hover:bg-blue-50 text-slate-700 hover:text-[#254d90] border border-slate-200 hover:border-blue-300 shadow-xs transition cursor-pointer"
                                 title="Edit Prescription / Modify Medications"
                               >
-                                <FiEdit2 size={11} className="text-indigo-600" />
+                                <FiEdit2 size={11} className="text-[#254d90]" />
                                 <span>Edit Rx</span>
                               </button>
                             ) : (
@@ -1373,7 +1402,6 @@ export default function PrescriptionsView() {
                 : "prescriptions"
             }
           />
-
           <div className="dir-scroll-bar-footer">
             <span className="text-xs text-slate-500 font-medium">
               Digital prescriptions created by doctors, linked medications, and automated WhatsApp delivery.
@@ -1381,6 +1409,335 @@ export default function PrescriptionsView() {
           </div>
         </div>
       )}
+
+      {/* Cards View: ONLY view on mobile (< md), and shown on PC (md+) when desktopViewMode === 'cards' */}
+      <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full`}>
+        <div className="space-y-3.5 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4">
+          {paginatedPrescriptions.map((rx) => {
+            const meds = rx.medicines || [];
+            const clinicCount = rx.clinic_meds_count !== undefined
+              ? rx.clinic_meds_count
+              : meds.filter((m) => (m.fulfillment || "CLINIC").toUpperCase() === "CLINIC").length;
+            const outsideCount = rx.outside_meds_count !== undefined
+              ? rx.outside_meds_count
+              : meds.filter((m) => (m.fulfillment || "").toUpperCase() === "OUTSIDE").length;
+            const isHybrid = clinicCount > 0 && outsideCount > 0;
+            const isAllOutside = outsideCount > 0 && clinicCount === 0;
+
+            return (
+              <div
+                key={rx.id}
+                className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col gap-3"
+              >
+                {/* 1. Header: Rx UID, Encounter, Mode, Dispensary Status */}
+                <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[11px] font-bold text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded">
+                        {rx.prescription_uid || `#RX-${rx.id}`}
+                      </span>
+                      {rx.encounter_uid && (
+                        <span className="font-mono text-[10.5px] text-[#126868] bg-[#126868]/10 px-1.5 py-0.5 rounded border border-[#126868]/30 font-semibold">
+                          {rx.encounter_uid}
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-1.5 mt-1">
+                      {rx.prescription_mode === "QUICK_REFILL" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-amber-50 text-amber-800 border border-amber-200">
+                          Direct Refill
+                        </span>
+                      ) : rx.prescription_mode === "TELE_CONSULT" ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-blue-50 text-blue-800 border border-blue-200">
+                          Teleconsult
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-800 border border-emerald-200">
+                          In-Person Visit
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    {isAllOutside ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[10.5px] border bg-slate-100 text-slate-700 border-slate-300">
+                        Outside Chemist
+                      </span>
+                    ) : isHybrid ? (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[10.5px] border ${
+                        rx.is_dispensed ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {rx.is_dispensed ? "Clinic Dispensed" : `Pending Clinic (${clinicCount})`}
+                      </span>
+                    ) : rx.is_finalised === false || rx.is_dispensable === false ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[10.5px] border bg-slate-100 text-slate-700 border-slate-300">
+                        Draft (In Consult)
+                      </span>
+                    ) : (
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full font-bold text-[10.5px] border ${
+                        rx.is_dispensed ? "bg-emerald-50 text-emerald-700 border-emerald-200" : "bg-amber-50 text-amber-700 border-amber-200"
+                      }`}>
+                        {rx.is_dispensed ? "Dispensed" : "Pending Dispense"}
+                      </span>
+                    )}
+
+                    <span className="font-mono text-[10px] text-slate-500">
+                      {rx.created_date_display || rx.created_at || "—"}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Patient Identity & Contact */}
+                <div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h4 className="text-base font-bold text-slate-900 leading-tight">
+                      {rx.patient_name}
+                    </h4>
+                    {rx.patient_phone && (
+                      <a
+                        href={`tel:${rx.patient_phone}`}
+                        className="inline-flex items-center gap-1 text-xs font-mono text-[#126868] hover:underline font-semibold"
+                      >
+                        <FiPhone className="w-3 h-3 text-[#126868]" />
+                        <span>{(rx.patient_phone || "").replace(/^\+?91/, "")}</span>
+                      </a>
+                    )}
+                  </div>
+
+                  {rx.diagnosis && (
+                    <div className="mt-1.5 text-xs text-slate-800 bg-slate-50 border border-slate-200/80 px-2 py-1 rounded">
+                      <span className="text-slate-500 font-medium">Diagnosis: </span>
+                      <span className="font-semibold text-slate-900">{rx.diagnosis}</span>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-1.5 mt-2 text-xs text-slate-600">
+                    <span className="font-semibold text-slate-900">{rx.doctor_name}</span>
+                    {rx.doctor_specialty && (
+                      <span className="text-slate-400">({rx.doctor_specialty})</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. Prescribed Medicines */}
+                <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-xs flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-[11px] font-semibold text-slate-700">
+                    <span>Prescribed Medications ({meds.length}):</span>
+                    {outsideCount > 0 && clinicCount > 0 && (
+                      <span className="text-[10px] text-amber-800 font-bold">
+                        {clinicCount} Clinic • {outsideCount} Outside
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-wrap gap-1 mt-0.5">
+                    {meds && meds.length > 0 ? (
+                      meds.map((m, i) => {
+                        const isOutside = (m.fulfillment || "").toUpperCase() === "OUTSIDE";
+                        return (
+                          <span
+                            key={i}
+                            className={`inline-flex items-center gap-1 px-2 py-0.5 rounded font-semibold border ${
+                              isOutside
+                                ? "bg-amber-50 text-amber-900 border-amber-300"
+                                : "bg-white text-slate-800 border-slate-200"
+                            }`}
+                            style={{ fontSize: "11px" }}
+                          >
+                            <span>{m.name}</span>
+                            {isOutside && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider text-amber-700 bg-amber-100/90 px-1 rounded ml-0.5">
+                                Outside
+                              </span>
+                            )}
+                          </span>
+                        );
+                      })
+                    ) : (
+                      <span className="text-slate-400 italic text-[11px]">No medicines listed</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Action Buttons Attached Directly to Card */}
+                <div className="pt-2 border-t border-slate-100 flex flex-col gap-2">
+                  {/* Row 1: Primary fulfillment / consult actions */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {rx.is_finalised === false ? (
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/consultations?encounter_id=${rx.encounter_id}&auto_open=true`)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition cursor-pointer col-span-2"
+                      >
+                        <FiEdit2 size={13} />
+                        <span>Open Clinical Workspace (Draft)</span>
+                      </button>
+                    ) : !rx.is_dispensed && (clinicCount > 0 || meds.some(m => (m.fulfillment || "CLINIC").toUpperCase() === "CLINIC")) ? (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => navigate(`/pharmacy?patient_id=${rx.patient_id}&prescription_id=${rx.id}`)}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#126868] text-white hover:bg-[#0e5252] shadow-xs transition cursor-pointer"
+                        >
+                          <FiPackage size={13} />
+                          <span>Dispense</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const params = new URLSearchParams();
+                            if (rx.patient_id) params.set("patient_id", rx.patient_id);
+                            if (rx.doctor_id) params.set("doctor_id", rx.doctor_id);
+                            if (rx.appointment_id) params.set("appointment_id", rx.appointment_id);
+                            if (rx.encounter_id) params.set("encounter_id", rx.encounter_id);
+                            if (rx.patient_name) params.set("patient_name", rx.patient_name);
+                            if (rx.patient_phone) params.set("patient_phone", rx.patient_phone);
+                            navigate(`/consultations?${params.toString()}`);
+                          }}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                        >
+                          <FiExternalLink size={13} className="text-[#254d90]" />
+                          <span>Consult</span>
+                        </button>
+                      </>
+                    ) : rx.is_dispensed ? (
+                      <>
+                        <div className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          <FiCheckCircle size={13} className="text-emerald-600" />
+                          <span>Dispensed</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const params = new URLSearchParams();
+                            if (rx.patient_id) params.set("patient_id", rx.patient_id);
+                            if (rx.doctor_id) params.set("doctor_id", rx.doctor_id);
+                            if (rx.appointment_id) params.set("appointment_id", rx.appointment_id);
+                            if (rx.encounter_id) params.set("encounter_id", rx.encounter_id);
+                            if (rx.patient_name) params.set("patient_name", rx.patient_name);
+                            if (rx.patient_phone) params.set("patient_phone", rx.patient_phone);
+                            navigate(`/consultations?${params.toString()}`);
+                          }}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                        >
+                          <FiExternalLink size={13} className="text-[#254d90]" />
+                          <span>Consult</span>
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          disabled={updatingRxId === rx.id}
+                          onClick={() => handleUpdateFulfillment(rx.id, "CLINIC")}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition cursor-pointer disabled:opacity-50"
+                        >
+                          <FiPackage size={13} />
+                          <span>{updatingRxId === rx.id ? "Updating..." : "To Clinic"}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const params = new URLSearchParams();
+                            if (rx.patient_id) params.set("patient_id", rx.patient_id);
+                            if (rx.doctor_id) params.set("doctor_id", rx.doctor_id);
+                            if (rx.appointment_id) params.set("appointment_id", rx.appointment_id);
+                            if (rx.encounter_id) params.set("encounter_id", rx.encounter_id);
+                            if (rx.patient_name) params.set("patient_name", rx.patient_name);
+                            if (rx.patient_phone) params.set("patient_phone", rx.patient_phone);
+                            navigate(`/consultations?${params.toString()}`);
+                          }}
+                          className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                        >
+                          <FiExternalLink size={13} className="text-[#254d90]" />
+                          <span>Consult</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Row 2: Secondary actions */}
+                  <div className="grid grid-cols-4 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRx(rx)}
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="Print / View Slip"
+                    >
+                      <FiPrinter size={12} className="text-slate-500" />
+                      <span>Slip</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      disabled={sendingWhatsappId === rx.id}
+                      onClick={() => handleSendWhatsApp(rx.id)}
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 shadow-xs transition cursor-pointer disabled:opacity-50"
+                      title="Send WhatsApp Digital Prescription"
+                    >
+                      <FaWhatsapp size={12} className="text-emerald-600" />
+                      <span>{sendingWhatsappId === rx.id ? "Sending" : "WhatsApp"}</span>
+                    </button>
+
+                    {!rx.is_dispensed ? (
+                      <button
+                        type="button"
+                        onClick={() => handleEditPrescription(rx)}
+                        className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-blue-50 text-slate-700 hover:text-[#254d90] border border-slate-200 hover:border-blue-300 shadow-xs transition cursor-pointer"
+                        title="Edit Prescription"
+                      >
+                        <FiEdit2 size={12} className="text-[#254d90]" />
+                        <span>Edit</span>
+                      </button>
+                    ) : (
+                      <div className="inline-flex items-center justify-center py-1.5 px-2 text-[11px] text-slate-400 font-medium">
+                        —
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedRx(rx)}
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-2 text-[11px] font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 hover:text-[#254d90] border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="Inspect Prescription Details"
+                    >
+                      <FiEye size={12} className="text-[#254d90]" />
+                      <span>View</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Mobile / Cards Pagination Control */}
+        <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs mt-3.5">
+          <Pagination
+            currentPage={currentPage}
+            totalItems={tabFilteredPrescriptions.length}
+            pageSize={pageSize}
+            onPageChange={(p) => setCurrentPage(p)}
+            onPageSizeChange={(sz) => {
+              setPageSize(sz);
+              setCurrentPage(1);
+            }}
+            pageSizeOptions={[10, 20, 50, "all"]}
+            itemLabel={
+              activeTab === "pending"
+                ? "pending prescriptions"
+                : activeTab === "dispensed"
+                ? "dispensed prescriptions"
+                : activeTab === "outside"
+                ? "outside chemist prescriptions"
+                : "prescriptions"
+            }
+          />
+        </div>
+      </div>
+    </>
+  )}
     </section>
 
       {/* CREATE PRESCRIPTION MODAL */}

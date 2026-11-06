@@ -22,6 +22,7 @@ import SuperAdminView from "./pages/superadmin/SuperAdminView";
 import SettingsView from "./components/SettingsView";
 import NewAppointmentModal from "./components/NewAppointmentModal";
 import ErrorBoundary from "./components/ErrorBoundary";
+import PatientPortal from "./components/patient/PatientPortal";
 import { fetchSettings } from "./api";
 
 // Protected Layout Route for authenticated users (Staff, Doctor, Admin, SuperAdmin)
@@ -56,7 +57,7 @@ function ProtectedApp() {
   }
 
   return (
-    <MainLayout clinicName={clinicInfo?.clinic_name || "Aerostate Clinic"}>
+    <MainLayout clinicName={clinicInfo?.clinic_name || "Aerostate Clinic"} clinicInfo={clinicInfo}>
       <ErrorBoundary>
         <Routes>
           <Route
@@ -128,6 +129,16 @@ export default function App() {
       <ToastProvider>
         <BrowserRouter>
           <Routes>
+            {/* Patient Self-Service Portal */}
+            <Route
+              path="/patient"
+              element={<PatientPortal onSwitchToStaffLogin={() => (window.location.href = "/login")} />}
+            />
+            <Route
+              path="/portal"
+              element={<PatientPortal onSwitchToStaffLogin={() => (window.location.href = "/login")} />}
+            />
+
             {/* Normal Staff / Doctor Login */}
             <Route path="/login" element={<Login />} />
 

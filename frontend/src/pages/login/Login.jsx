@@ -7,15 +7,21 @@ import {
   FiLock,
   FiShield,
   FiUser,
-  FiLoader
+  FiLoader,
+  FiSettings
 } from "react-icons/fi";
 import { useAuth } from "../../context/AuthContext";
 import AerostateLogo from "../../components/common/AerostateLogo";
+import { getBaseUrl, setApiBaseUrl } from "../../api";
 import "./login.css";
 
 export default function Login() {
   const navigate = useNavigate();
   const { login, isAuthenticated, isSuperAdmin } = useAuth();
+
+  const [showServerModal, setShowServerModal] = useState(false);
+  const [serverUrlInput, setServerUrlInput] = useState(getBaseUrl() || "");
+  const [serverStatusMsg, setServerStatusMsg] = useState("");
 
   const [credentials, setCredentials] = useState({
     username: "",
@@ -74,6 +80,15 @@ export default function Login() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSaveServerUrl = () => {
+    setApiBaseUrl(serverUrlInput.trim());
+    setServerStatusMsg("Server URL saved!");
+    setTimeout(() => {
+      setShowServerModal(false);
+      setServerStatusMsg("");
+    }, 600);
   };
 
   return (
@@ -204,13 +219,74 @@ export default function Login() {
             </Link>
           </div>
 
-          {/* Clean Security Footer */}
-          <div className="asl-secure-note">
-            <FiShield size={14} />
-            <span>Secure access for authorized clinic personnel only.</span>
+          {/* Server Config & Security Footer */}
+          <div className="mt-4 pt-3 border-t border-slate-700/40 flex items-center justify-between text-xs text-slate-500">
+            <button
+              type="button"
+              onClick={() => setShowServerModal(true)}
+              className="flex items-center gap-1 text-slate-400 hover:text-blue-400 transition"
+            >
+              <FiSettings size={13} />
+              <span>Server Connection</span>
+            </button>
+            <div className="flex items-center gap-1">
+              <FiShield size={12} />
+              <span>Encrypted</span>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* Server Configuration Modal */}
+      {showServerModal && (
+        <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-800 border border-slate-700 rounded-2xl p-6 max-w-md w-full shadow-2xl">
+            <h3 className="text-base font-bold text-white flex items-center gap-2 mb-2">
+              <FiSettings className="text-blue-400" /> Clinic Server Connection
+            </h3>
+            <p className="text-xs text-slate-400 mb-4">
+              Enter your backend server address (e.g.{" "}
+              <code className="text-blue-300">http://192.168.1.5:8000</code> or your domain).
+            </p>
+
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  API Base URL
+                </label>
+                <input
+                  type="url"
+                  placeholder="e.g. http://192.168.1.10:8000"
+                  value={serverUrlInput}
+                  onChange={(e) => setServerUrlInput(e.target.value)}
+                  className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3.5 py-2.5 text-sm text-white focus:outline-none focus:border-blue-500"
+                />
+              </div>
+
+              {serverStatusMsg && (
+                <p className="text-xs text-emerald-400 font-medium">{serverStatusMsg}</p>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowServerModal(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-300 text-xs font-medium transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveServerUrl}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold transition"
+                >
+                  Save &amp; Connect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

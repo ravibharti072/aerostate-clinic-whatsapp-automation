@@ -22,10 +22,13 @@ import {
   FiExternalLink,
   FiLayers,
   FiXCircle,
+  FiList,
+  FiGrid,
 } from "react-icons/fi";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
 import ModuleWriternHeader from "./modulewriternheader/ModuleWriternHeader";
+import AbdmModal from "./common/AbdmModal";
 import Pagination from "./common/Pagination";
 import SearchBar from "./common/SearchBar";
 import PlaceDiagnosticOrderModal from "./common/PlaceDiagnosticOrderModal";
@@ -60,6 +63,8 @@ export default function ConsultationsView() {
   const [statusFilter, setStatusFilter] = useState("");
   // Consultation Sub-Section Tabs: 'active' (In Consultation), 'completed' (Signed), 'cancelled', 'all'
   const [consultationTab, setConsultationTab] = useState("active");
+  const [desktopViewMode, setDesktopViewMode] = useState("table"); // 'table' | 'cards'
+  const [abdmModalPatient, setAbdmModalPatient] = useState(null);
 
   const tabFilteredConsultations = useMemo(() => {
     if (consultationTab === "active") {
@@ -979,15 +984,37 @@ export default function ConsultationsView() {
                 </option>
               ))}
             </select>
-
-            <button
-              type="button"
-              onClick={handleSearchSubmit}
-              className="btn-submit"
-              style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
-            >
-              Search
-            </button>
+            {/* Desktop View Switcher: 1 at a time (Table vs Cards) */}
+            <div className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5" style={{ height: "34px" }}>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("table")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "table"
+                    ? "bg-white text-slate-900 shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Spreadsheet List View"
+              >
+                <FiList size={13} />
+                <span>List View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("cards")}
+                className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                  desktopViewMode === "cards"
+                    ? "bg-[#254d90] text-white shadow-xs font-bold"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                style={{ height: "28px" }}
+                title="Responsive Cards View"
+              >
+                <FiGrid size={13} />
+                <span>Cards View</span>
+              </button>
+            </div>
 
             {hasActiveFilters && (
               <button
@@ -1023,7 +1050,10 @@ export default function ConsultationsView() {
             </button>
           </div>
         ) : (
-          <div className="dir-table-wrapper">
+          <>
+            {/* Desktop View: Full 10-Column Horizontal Scroll Table (1 at a time when desktopViewMode === 'table') */}
+            {desktopViewMode === "table" && (
+              <div className="dir-table-wrapper consultations-desktop-table hidden md:flex">
             <div className="dir-scroll-bar-header">
               <span className="dir-scroll-hint">⇄ Master Consultation Encounters (Scroll horizontally to view all columns)</span>
               <span className="text-xs font-semibold text-slate-500">
@@ -1310,7 +1340,6 @@ export default function ConsultationsView() {
               pageSizeOptions={[10, 20, 50, 100]}
               itemLabel="encounters"
             />
-
             <div className="dir-scroll-bar-footer">
               <span className="text-xs text-slate-500 font-medium">
                 Audit log of clinical encounters, active symptoms, and specialist medical diagnoses.
@@ -1318,6 +1347,259 @@ export default function ConsultationsView() {
             </div>
           </div>
         )}
+
+        {/* Cards View: ONLY view on mobile (< md), and shown on PC (md+) when desktopViewMode === 'cards' */}
+        <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full`}>
+          <div className="space-y-3.5 md:space-y-0 md:grid md:grid-cols-2 xl:grid-cols-3 md:gap-4">
+            {paginatedConsultations.map((c) => (
+              <div
+                key={c.id}
+                onClick={() => handleOpenDetails(c.id)}
+                className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex flex-col gap-3 cursor-pointer hover:border-slate-300 transition"
+              >
+                {/* 1. Header: Encounter UID, Patient ID, Status */}
+                <div className="flex items-start justify-between gap-2 pb-2.5 border-b border-slate-100">
+                  <div className="flex flex-col">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-[11px] font-bold text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded">
+                        {c.encounter_uid}
+                      </span>
+                      <span className="font-mono text-[11px] font-semibold text-[#254d90] bg-blue-50/80 px-2 py-0.5 rounded border border-blue-200/60">
+                        {c.patient_uid || (c.patient_id ? `PAT-${String(c.patient_id).padStart(4, "0")}` : "—")}
+                      </span>
+                    </div>
+                    {c.visit_type && (
+                      <span className="text-[10px] font-semibold px-1.5 py-0.2 rounded border bg-slate-100 text-slate-700 border-slate-200 mt-1 inline-block">
+                        {c.visit_type}
+                      </span>
+                    )}
+                  </div>
+
+                  <div className="flex flex-col items-end gap-1">
+                    <span
+                      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold text-[10.5px] border ${
+                        c.status === "COMPLETED"
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                          : c.status === "CANCELLED"
+                          ? "bg-rose-50 text-rose-700 border-rose-200"
+                          : "bg-teal-50 text-teal-800 border-teal-200"
+                      }`}
+                    >
+                      <span>
+                        {c.status === "COMPLETED"
+                          ? "Completed"
+                          : c.status === "CANCELLED"
+                          ? "Cancelled"
+                          : "In Consultation"}
+                      </span>
+                    </span>
+
+                    <span className="font-mono text-[10.5px] text-slate-500">
+                      {c.consultation_date}
+                    </span>
+                  </div>
+                </div>
+
+                {/* 2. Patient Identity & Contact */}
+                <div>
+                  <div className="flex items-baseline justify-between gap-2">
+                    <h4 className="text-base font-bold text-slate-900 leading-tight">
+                      {c.patient_name}
+                    </h4>
+                    {c.patient_phone && (
+                      <a
+                        href={`tel:${c.patient_phone}`}
+                        onClick={(e) => e.stopPropagation()}
+                        className="inline-flex items-center gap-1 text-xs font-mono text-[#126868] hover:underline font-semibold"
+                      >
+                        <FiPhone className="w-3 h-3 text-[#126868]" />
+                        <span>{(c.patient_phone || "").replace(/^\+?91/, "")}</span>
+                      </a>
+                    )}
+                  </div>
+
+                  {/* Diagnosis */}
+                  <div className="mt-1.5 text-xs text-slate-800 bg-slate-50 border border-slate-200/80 px-2.5 py-1.5 rounded">
+                    <span className="text-slate-500 font-medium">Diagnosis: </span>
+                    <span className="font-semibold text-slate-900">{c.diagnosis || "Pending Evaluation"}</span>
+                  </div>
+
+                  {c.lab_tests && (
+                    <div className="mt-1 text-[11px] text-[#254d90] bg-blue-50/60 border border-blue-200/60 px-2 py-0.5 rounded truncate">
+                      🔬 Tests: {c.lab_tests}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. Specialist Cardlet */}
+                <div className="bg-slate-50 rounded-lg p-2.5 border border-slate-200 text-xs flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <span className="font-semibold text-slate-900 truncate">
+                      {c.doctor_name}
+                    </span>
+                    {c.specialization && (
+                      <span className="text-slate-400 text-[10.5px] truncate">
+                        ({c.specialization})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. Action Buttons Attached Directly to Card */}
+                <div
+                  className="pt-2 border-t border-slate-100 flex flex-col gap-2"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  {/* Row 1: Primary Clinical Action */}
+                  <div className="grid grid-cols-2 gap-2">
+                    {c.status === "IN_CONSULTATION" && !c.is_finalised ? (
+                      <button
+                        type="button"
+                        onClick={() => openWorkspace(c.id)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition cursor-pointer"
+                        title="Take Consultation (Open Clinical Workspace)"
+                      >
+                        <FiEdit3 size={13} />
+                        <span>Take Workspace</span>
+                      </button>
+                    ) : c.is_finalised ? (
+                      <button
+                        type="button"
+                        onClick={() => openWorkspace(c.id)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition cursor-pointer"
+                        title="View & Edit Clinical Notes"
+                      >
+                        <FiFileText size={13} />
+                        <span>Clinical Notes</span>
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => openWorkspace(c.id)}
+                        className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      >
+                        <FiEdit3 size={13} className="text-[#254d90]" />
+                        <span>Workspace</span>
+                      </button>
+                    )}
+
+                    <button
+                      type="button"
+                      onClick={() => handleOpenDetails(c.id)}
+                      className="w-full inline-flex items-center justify-center gap-1.5 py-2 px-3 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="View Consultation Summary & Details"
+                    >
+                      <FiEye size={13} className="text-[#254d90]" />
+                      <span>View Details</span>
+                    </button>
+                  </div>
+
+                  {/* Row 2: Secondary ERP actions */}
+                  <div className="grid grid-cols-5 gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/prescriptions?encounter_id=${c.id}&patient_phone=${encodeURIComponent(
+                            c.patient_phone || ""
+                          )}&patient_name=${encodeURIComponent(c.patient_name || "")}`
+                        )
+                      }
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-1.5 text-[11px] font-semibold rounded bg-white hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="Write or View Digital Prescription"
+                    >
+                      <FiFileText size={12} className="text-emerald-600" />
+                      <span>Rx</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/laboratory?search=${encodeURIComponent(c.patient_phone || c.patient_name || "")}`
+                        )
+                      }
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-1.5 text-[11px] font-semibold rounded bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="Order or Track Diagnostic Tests"
+                    >
+                      <FiLayers size={12} className="text-[#254d90]" />
+                      <span>Lab</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/patients?search=${encodeURIComponent(c.patient_phone || c.patient_name || "")}`
+                        )
+                      }
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-1.5 text-[11px] font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="Open 360° Patient Medical History"
+                    >
+                      <FiActivity size={12} className="text-[#254d90]" />
+                      <span>Chart</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() =>
+                        navigate(
+                          `/billing?patient_phone=${encodeURIComponent(
+                            c.patient_phone || ""
+                          )}&patient_name=${encodeURIComponent(c.patient_name || "")}`
+                        )
+                      }
+                      className="inline-flex items-center justify-center gap-1 py-1.5 px-1.5 text-[11px] font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition cursor-pointer"
+                      title="View & Generate Consultation Invoice"
+                    >
+                      <FiDollarSign size={12} className="text-slate-600" />
+                      <span>Bill</span>
+                    </button>
+
+                    {c.status === "IN_CONSULTATION" && !c.is_finalised ? (
+                      <button
+                        type="button"
+                        onClick={() => handleCancelConsultation(c.id, c.patient_name)}
+                        className="inline-flex items-center justify-center gap-1 py-1.5 px-1.5 text-[11px] font-semibold rounded bg-white hover:bg-rose-50 text-rose-600 border border-slate-200 shadow-xs transition cursor-pointer"
+                        title="Cancel Consultation (Return Patient to Waiting Queue)"
+                      >
+                        <FiXCircle size={12} className="text-rose-500" />
+                        <span>Cancel</span>
+                      </button>
+                    ) : c.status === "COMPLETED" || c.is_finalised ? (
+                      <div className="inline-flex items-center justify-center gap-0.5 py-1.5 px-1 text-[10.5px] font-bold rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                        <FiCheckCircle size={11} className="text-emerald-600" />
+                        <span>Done</span>
+                      </div>
+                    ) : (
+                      <div className="inline-flex items-center justify-center py-1.5 px-1 text-[10.5px] font-semibold rounded bg-slate-50 text-slate-400 border border-slate-200">
+                        <span>—</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {/* Mobile / Cards Pagination Control */}
+          <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-xs mt-3.5">
+            <Pagination
+              currentPage={currentPage}
+              totalItems={consultations.length}
+              pageSize={pageSize}
+              onPageChange={(p) => setCurrentPage(p)}
+              onPageSizeChange={(sz) => {
+                setPageSize(sz);
+                setCurrentPage(1);
+              }}
+              pageSizeOptions={[10, 20, 50, 100]}
+              itemLabel="encounters"
+            />
+          </div>
+        </div>
+      </>
+    )}
       </section>
 
       {/* ======================================================== */}
@@ -1327,7 +1609,7 @@ export default function ConsultationsView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "780px", maxHeight: "92vh" }}
+            style={{ maxWidth: "960px", maxHeight: "94vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             {loadingDetails ? (
@@ -1337,21 +1619,25 @@ export default function ConsultationsView() {
             ) : selectedDetails ? (
               <>
                 {/* Modal Header */}
-                <div className="modal-header">
+                <div className="modal-header" style={{ padding: "14px 20px" }}>
                   <div>
-                    <div className="flex items-center gap-2">
-                      <h2 style={{ fontSize: "17px" }}>Consultation Encounter</h2>
-                      <span className="font-mono text-xs font-bold text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h2 className="text-base font-extrabold text-slate-900 tracking-tight">Consultation Encounter</h2>
+                      <span className="font-mono text-xs font-bold text-slate-700 bg-slate-100 border border-slate-300 px-2.5 py-0.5 rounded-md">
                         {selectedDetails.encounter_uid}
                       </span>
                       <span
-                        className={`badge-${selectedDetails.status === "COMPLETED" ? "active" : "blue"}`}
+                        className={`inline-flex items-center gap-1 text-xs font-bold px-2.5 py-0.5 rounded-full ${
+                          selectedDetails.status === "COMPLETED"
+                            ? "text-emerald-800 bg-emerald-50 border border-emerald-200"
+                            : "text-blue-800 bg-blue-50 border border-blue-200"
+                        }`}
                       >
                         {selectedDetails.status === "COMPLETED" ? "Completed" : "In Progress"}
                       </span>
                     </div>
-                    <div className="modal-kicker">
-                      Date: {selectedDetails.consultation_date} • Visit Type: {selectedDetails.visit_type}
+                    <div className="text-xs text-slate-500 font-medium mt-1">
+                      Date: <strong className="text-slate-700">{selectedDetails.consultation_date}</strong> • Visit Type: <strong className="text-slate-700">{selectedDetails.visit_type || "General Consultation"}</strong>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1369,6 +1655,7 @@ export default function ConsultationsView() {
                       type="button"
                       onClick={() => setIsDetailModalOpen(false)}
                       className="modal-close"
+                      title="Close"
                     >
                       <FiX size={18} />
                     </button>
@@ -1376,214 +1663,234 @@ export default function ConsultationsView() {
                 </div>
 
                 {/* Modal Body */}
-                <div className="modal-body" style={{ gap: "16px" }}>
+                <div className="modal-body" style={{ gap: "16px", padding: "16px 20px" }}>
                   {/* Patient Profile Cardlet */}
-                  <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <div className="text-base font-bold text-slate-900">
+                  <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="text-base font-bold text-slate-900">
                           {selectedDetails.patient?.name}
-                        </div>
-                        <div className="flex items-center gap-2 text-xs font-mono text-slate-600 mt-0.5">
-                          <FiPhone size={12} className="text-[#126868]" />
-                          <span>{selectedDetails.patient?.phone_display || selectedDetails.patient?.phone}</span>
-                          <span>•</span>
-                          <span className="text-[#254d90] font-bold">{selectedDetails.patient?.uid}</span>
-                        </div>
-                      </div>
-                      <div className="text-right text-xs">
-                        <span className="font-semibold text-slate-700">
+                        </span>
+                        {selectedDetails.patient?.uid && (
+                          <span className="font-mono text-xs font-bold text-slate-600 bg-white px-2 py-0.5 rounded border border-slate-200">
+                            {selectedDetails.patient?.uid}
+                          </span>
+                        )}
+                        {(selectedDetails.patient?.phone_display || selectedDetails.patient?.phone) && (
+                          <span className="font-mono text-xs font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200 flex items-center gap-1">
+                            <FiPhone size={11} className="text-[#126868]" />
+                            {(selectedDetails.patient?.phone_display || selectedDetails.patient?.phone).replace(/^\+?91/, "")}
+                          </span>
+                        )}
+                        <span className="text-xs font-semibold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                           {selectedDetails.patient?.age || "-"} yrs / {selectedDetails.patient?.gender || "-"}
                         </span>
-                        <div className="text-[11px] text-slate-500 font-medium">
-                          Blood Group: <span className="font-bold text-rose-600">{selectedDetails.patient?.blood_group || "-"}</span>
-                        </div>
+                        {selectedDetails.patient?.blood_group && (
+                          <span className="text-xs font-bold text-rose-700 bg-rose-50 px-2 py-0.5 rounded border border-rose-200">
+                            Blood: {selectedDetails.patient?.blood_group}
+                          </span>
+                        )}
                       </div>
-                    </div>
-
-                    <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs">
-                      <div>
-                        <span className="text-slate-500">Attending Specialist: </span>
-                        <strong className="text-slate-800">{selectedDetails.doctor?.name}</strong>
-                        <span className="text-[#126868] font-medium ml-1">({selectedDetails.doctor?.specialization})</span>
+                      <div className="text-xs text-slate-600 font-medium">
+                        Attending Specialist: <strong className="text-slate-900">{selectedDetails.doctor?.name}</strong>
+                        {selectedDetails.doctor?.specialization && (
+                          <span className="text-[#126868] font-semibold ml-1">({selectedDetails.doctor?.specialization})</span>
+                        )}
                       </div>
                     </div>
                   </div>
 
                   {/* Vitals Signs Strip */}
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <div className="text-xs font-bold text-slate-700 uppercase tracking-wide">
-                        Vital Signs &amp; Anthropometry
+                  {(() => {
+                    const hasVitals = selectedDetails.vitals && Object.entries(selectedDetails.vitals).some(
+                      ([k, v]) => k !== "bmi" && k !== "bmi_category" && v !== "" && v !== null && v !== undefined
+                    );
+                    return (
+                      <div className="p-3.5 bg-white border border-slate-200 rounded-xl space-y-2.5">
+                        <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div className="flex items-center gap-2">
+                            <label className="text-sm font-semibold text-slate-800 m-0">
+                              Vital Signs &amp; Anthropometry
+                            </label>
+                            {hasVitals ? (
+                              <span className="text-[11px] font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                Examined &amp; Recorded
+                              </span>
+                            ) : (
+                              <span className="text-[11px] font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-500 border border-slate-200">
+                                Optional / Not Examined
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {hasVitals ? (
+                          <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2.5">
+                            {selectedDetails.vitals?.bp && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">BP (mmHg)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.bp}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.pulse && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">Pulse (bpm)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.pulse}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.temp && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">Temp (°F)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.temp}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.spo2 && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">SpO2 (%)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.spo2}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.resp_rate && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">Resp (/min)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.resp_rate}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.height && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">Height (cm)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.height}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.weight && (
+                              <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-slate-700 truncate">Weight (kg)</div>
+                                <div className="text-base font-mono font-bold text-slate-900 mt-1">
+                                  {selectedDetails.vitals.weight}
+                                </div>
+                              </div>
+                            )}
+                            {selectedDetails.vitals?.bmi && (
+                              <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                <div className="text-xs font-semibold text-[#254d90] truncate">BMI (Server)</div>
+                                <div className="text-base font-mono font-bold text-[#254d90] mt-1">
+                                  {selectedDetails.vitals.bmi} {selectedDetails.vitals?.bmi_category ? `(${selectedDetails.vitals.bmi_category})` : ""}
+                                </div>
+                              </div>
+                            )}
+                            {/* Any other custom vitals */}
+                            {Object.entries(selectedDetails.vitals || {}).map(([k, v]) => {
+                              if (["bp", "pulse", "temp", "spo2", "resp_rate", "bmi", "bmi_category", "height", "weight"].includes(k) || !v) return null;
+                              const label = k.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+                              return (
+                                <div key={k} className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between text-center min-h-[72px]">
+                                  <div className="text-xs font-semibold text-slate-700 truncate" title={label}>{label}</div>
+                                  <div className="text-base font-mono font-bold text-slate-900 mt-1">{v}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs text-slate-500 italic">
+                            Routine / Follow-up examination — Vital signs not recorded for this encounter.
+                          </div>
+                        )}
                       </div>
-                      {(!selectedDetails.vitals || !Object.entries(selectedDetails.vitals).some(([k, v]) => k !== "bmi" && k !== "bmi_category" && v !== "" && v !== null && v !== undefined)) && (
-                        <span className="text-[11px] text-slate-400 font-medium italic">
-                          Not examined / Skipped for this visit
-                        </span>
-                      )}
-                    </div>
-                    {selectedDetails.vitals && Object.entries(selectedDetails.vitals).some(([k, v]) => k !== "bmi" && k !== "bmi_category" && v !== "" && v !== null && v !== undefined) ? (
-                      <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                        {selectedDetails.vitals?.bp && (
-                          <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-center">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">BP (mmHg)</div>
-                            <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">
-                              {selectedDetails.vitals.bp}
-                            </div>
-                          </div>
-                        )}
-                        {selectedDetails.vitals?.pulse && (
-                          <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-center">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Pulse (bpm)</div>
-                            <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">
-                              {selectedDetails.vitals.pulse}
-                            </div>
-                          </div>
-                        )}
-                        {selectedDetails.vitals?.temp && (
-                          <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-center">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Temp (°F)</div>
-                            <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">
-                              {selectedDetails.vitals.temp}
-                            </div>
-                          </div>
-                        )}
-                        {selectedDetails.vitals?.spo2 && (
-                          <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-center">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">SpO2 (%)</div>
-                            <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">
-                              {selectedDetails.vitals.spo2}
-                            </div>
-                          </div>
-                        )}
-                        {selectedDetails.vitals?.resp_rate && (
-                          <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-center">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Resp Rate</div>
-                            <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">
-                              {selectedDetails.vitals.resp_rate}
-                            </div>
-                          </div>
-                        )}
-                        {selectedDetails.vitals?.bmi && (
-                          <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-lg text-center">
-                            <div className="text-[10px] uppercase font-bold text-[#254d90]">BMI (Server)</div>
-                            <div className="text-xs font-mono font-bold text-[#254d90] mt-0.5">
-                              {selectedDetails.vitals.bmi} {selectedDetails.vitals?.bmi_category ? `(${selectedDetails.vitals.bmi_category})` : ""}
-                            </div>
-                          </div>
-                        )}
-                        {/* Any other custom vitals */}
-                        {Object.entries(selectedDetails.vitals).map(([k, v]) => {
-                          if (["bp", "pulse", "temp", "spo2", "resp_rate", "bmi", "bmi_category", "height", "weight"].includes(k) || !v) return null;
-                          const label = k.replace(/_/g, " ").toUpperCase();
-                          return (
-                            <div key={k} className="p-2.5 bg-white border border-slate-200 rounded-lg text-center">
-                              <div className="text-[10px] uppercase font-bold text-slate-400 truncate">{label}</div>
-                              <div className="text-xs font-mono font-bold text-slate-800 mt-0.5">{v}</div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg text-center text-xs text-slate-500 italic">
-                        Routine / Follow-up examination — Vital signs not recorded for this encounter.
-                      </div>
-                    )}
-                  </div>
+                    );
+                  })()}
 
                   {/* Clinical Notes Section */}
-                  <div className="space-y-3 pt-1 text-xs">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                        Chief Complaint / Presentation
-                      </label>
-                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-relaxed">
-                        {selectedDetails.chief_complaint || "No chief complaint recorded."}
+                  <div className="space-y-3.5">
+                    {/* Chief Complaint & HPI */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                          Chief Complaint
+                        </label>
+                        <div className="w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-lg text-sm text-slate-900 leading-relaxed min-h-[44px]">
+                          {selectedDetails.chief_complaint || "No chief complaint recorded."}
+                        </div>
+                      </div>
+                      <div>
+                        <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                          History of Present Illness (HPI)
+                        </label>
+                        <div className="w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-lg text-sm text-slate-900 leading-relaxed min-h-[44px]">
+                          {selectedDetails.hpi || "No illness history recorded."}
+                        </div>
                       </div>
                     </div>
 
-                    {selectedDetails.hpi && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                          History of Present Illness (HPI)
-                        </label>
-                        <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-relaxed">
-                          {selectedDetails.hpi}
-                        </div>
-                      </div>
-                    )}
-
+                    {/* Clinical Examination */}
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                        Clinical Examination & Findings
+                      <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                        Clinical Examination
                       </label>
-                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-relaxed min-h-[44px]">
+                      <div className="w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-lg text-sm text-slate-900 leading-relaxed min-h-[44px]">
                         {selectedDetails.clinical_examination || "No examination findings recorded yet."}
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {/* Primary & Differential Diagnosis */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        <label className="block text-sm font-semibold text-slate-800 mb-1.5">
                           Primary Diagnosis
                         </label>
-                        <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-900 font-semibold">
+                        <div className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm font-semibold text-slate-900 leading-relaxed min-h-[44px]">
                           {selectedDetails.diagnosis || "Pending Evaluation"}
                         </div>
                       </div>
                       <div>
-                        <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
+                        <label className="block text-sm font-semibold text-slate-800 mb-1.5">
                           Differential Diagnosis
                         </label>
-                        <div className="p-2.5 bg-white border border-slate-200 rounded-lg text-slate-700">
+                        <div className="w-full px-3.5 py-2.5 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 leading-relaxed min-h-[44px]">
                           {selectedDetails.differential_diagnosis || "None recorded"}
                         </div>
                       </div>
                     </div>
 
+                    {/* Treatment Plan */}
                     <div>
-                      <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wide mb-1">
-                        Treatment Plan & Advice
+                      <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                        Treatment Plan &amp; Advice
                       </label>
-                      <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-800 leading-relaxed min-h-[44px]">
+                      <div className="w-full px-3.5 py-2.5 bg-slate-50/70 border border-slate-200 rounded-lg text-sm text-slate-900 leading-relaxed min-h-[44px]">
                         {selectedDetails.treatment_plan || "No treatment instructions documented."}
                       </div>
                     </div>
 
-                    {selectedDetails.lab_tests && (
-                      <div>
-                        <label className="block text-[11px] font-bold text-purple-700 uppercase tracking-wide mb-1">
-                          Diagnostic Lab Tests &amp; Investigations (Ordered Tests)
-                        </label>
-                        <div className="p-2.5 bg-purple-50/70 border border-purple-200 rounded-lg text-purple-950 font-mono text-xs leading-relaxed">
-                          {selectedDetails.lab_tests}
-                        </div>
-                      </div>
-                    )}
-
+                    {/* Doctor Advice (if present) */}
                     {selectedDetails.advice && (
                       <div>
-                        <label className="block text-[11px] font-bold text-teal-700 uppercase tracking-wide mb-1">
+                        <label className="block text-sm font-semibold text-teal-800 mb-1.5">
                           Doctor Advice &amp; Lifestyle Instructions
                         </label>
-                        <div className="p-2.5 bg-teal-50/60 border border-teal-200 rounded-lg text-slate-800 leading-relaxed text-xs">
+                        <div className="w-full px-3.5 py-2.5 bg-teal-50/50 border border-teal-200 rounded-lg text-sm text-slate-900 leading-relaxed min-h-[44px]">
                           {selectedDetails.advice}
                         </div>
                       </div>
                     )}
 
-                    {selectedDetails.follow_up_date && (
-                      <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center justify-between text-emerald-900">
-                        <span className="font-semibold text-xs">Next Follow-Up Date:</span>
-                        <span className="font-bold text-xs font-mono">{selectedDetails.follow_up_date}</span>
-                      </div>
-                    )}
-
+                    {/* Digitally Signed & Locked banner */}
                     {selectedDetails.is_finalised && (
                       <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl flex items-center gap-2.5 text-emerald-900">
                         <FiLock className="text-emerald-700 shrink-0" size={16} />
                         <div className="text-xs">
-                          <span className="font-bold">Digitally Signed & Locked</span>
+                          <span className="font-bold">Digitally Signed &amp; Locked</span>
                           <div className="text-[11px] text-emerald-700">
                             Signed by {selectedDetails.signed_by || selectedDetails.doctor?.name} on {selectedDetails.signed_at || selectedDetails.consultation_date}
                           </div>
@@ -1591,21 +1898,19 @@ export default function ConsultationsView() {
                       </div>
                     )}
 
-                    {/* Linked Clinical Orders & Billing Section */}
-                    <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[11px] font-bold text-slate-700 uppercase tracking-wide">
-                          Connected Care & Revenue
-                        </span>
+                    {/* Connected Care & Orders */}
+                    <div className="p-4 bg-slate-50/80 border border-slate-200 rounded-xl space-y-3">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <label className="text-sm font-semibold text-slate-800 m-0">
+                          Connected Care &amp; Orders
+                        </label>
                         <div className="flex items-center gap-1.5">
                           <button
                             type="button"
-                            onClick={() => {
-                              handleOpenRxWriter(selectedDetails);
-                            }}
-                            className="px-2 py-1 text-[11px] font-semibold rounded bg-[#126868]/10 text-[#126868] hover:bg-[#126868]/20 transition flex items-center gap-1 cursor-pointer"
+                            onClick={() => handleOpenRxWriter(selectedDetails)}
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-[#126868]/10 hover:bg-[#126868]/20 text-[#126868] border border-[#126868]/20 transition cursor-pointer"
                           >
-                            <FiPlus size={11} />
+                            <FiPlus size={12} />
                             <span>{selectedDetails.linked_prescription ? "Edit Prescription" : "Prescription"}</span>
                           </button>
                           <button
@@ -1621,9 +1926,9 @@ export default function ConsultationsView() {
                               });
                               setIsLabOrderModalOpen(true);
                             }}
-                            className="px-2 py-1 text-[11px] font-semibold rounded bg-purple-50 text-purple-700 hover:bg-purple-100 transition flex items-center gap-1 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-[#126868]/10 hover:bg-[#126868]/20 text-[#126868] border border-[#126868]/30 transition cursor-pointer"
                           >
-                            <FiPlus size={11} />
+                            <FiPlus size={12} />
                             <span>Lab Test</span>
                           </button>
                           <button
@@ -1632,72 +1937,76 @@ export default function ConsultationsView() {
                               setIsDetailModalOpen(false);
                               navigate(`/billing?patient_id=${selectedDetails.patient?.id}&encounter_id=${selectedDetails.id}`);
                             }}
-                            className="px-2 py-1 text-[11px] font-semibold rounded bg-blue-50 text-blue-700 hover:bg-blue-100 transition flex items-center gap-1 cursor-pointer"
+                            className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 transition cursor-pointer"
                           >
-                            <FiPlus size={11} />
+                            <FiPlus size={12} />
                             <span>Bill / Invoice</span>
                           </button>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
                         {/* Linked Prescription */}
                         <div
-                          className="p-2.5 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-[#126868] transition"
+                          className="p-3 bg-white border border-slate-200 rounded-lg cursor-pointer hover:border-[#126868] transition"
                           onClick={() => handleOpenRxWriter(selectedDetails)}
                           title="Click to open Prescription (Rx) Writer"
                         >
                           <div className="flex items-center justify-between">
-                            <div className="text-[10px] uppercase font-bold text-slate-400">Prescription (Rx)</div>
-                            <span className="text-[10px] text-[#126868] font-bold hover:underline">
+                            <span className="text-xs font-semibold text-slate-700">Prescription (Rx)</span>
+                            <span className="text-xs text-[#126868] font-bold hover:underline">
                               {selectedDetails.linked_prescription ? "Edit" : "+ Add"}
                             </span>
                           </div>
                           {selectedDetails.linked_prescription ? (
-                            <div className="mt-1">
-                              <span className="font-mono text-xs font-bold text-[#254d90] bg-[#254d90]/10 px-1.5 py-0.5 rounded">
+                            <div className="mt-1.5">
+                              <span className="font-mono text-xs font-bold text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded border border-[#254d90]/20">
                                 {selectedDetails.linked_prescription.prescription_uid}
                               </span>
-                              <div className="text-[11px] text-slate-600 mt-1 line-clamp-1">
+                              <div className="text-xs text-slate-700 font-medium mt-1.5 line-clamp-1">
                                 {selectedDetails.linked_prescription.medicines?.length || 0} medications prescribed
                               </div>
                             </div>
                           ) : (
-                            <div className="text-slate-400 italic text-[11px] mt-1">None attached</div>
+                            <div className="text-slate-400 italic text-xs mt-1.5">None attached</div>
                           )}
                         </div>
 
                         {/* Linked Lab Orders */}
-                        <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
-                          <div className="text-[10px] uppercase font-bold text-slate-400">Diagnostic Tests</div>
+                        <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                          <span className="text-xs font-semibold text-slate-700 block">Diagnostic Tests</span>
                           {selectedDetails.linked_lab_orders && selectedDetails.linked_lab_orders.length > 0 ? (
-                            <div className="mt-1">
-                              <span className="font-mono text-xs font-bold text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">
+                            <div className="mt-1.5">
+                              <span className="font-mono text-xs font-bold text-[#126868] bg-[#126868]/10 px-2 py-0.5 rounded border border-[#126868]/30">
                                 {selectedDetails.linked_lab_orders[0].order_uid}
                               </span>
-                              <div className="text-[11px] text-slate-600 mt-1">
+                              <div className="text-xs text-slate-700 font-medium mt-1.5">
                                 {selectedDetails.linked_lab_orders[0].status}
                               </div>
                             </div>
+                          ) : selectedDetails.lab_tests ? (
+                            <div className="mt-1.5 text-xs text-slate-700 font-mono line-clamp-2">
+                              {selectedDetails.lab_tests}
+                            </div>
                           ) : (
-                            <div className="text-slate-400 italic text-[11px] mt-1">No lab orders placed</div>
+                            <div className="text-slate-400 italic text-xs mt-1.5">No lab orders placed</div>
                           )}
                         </div>
 
                         {/* Linked Invoice */}
-                        <div className="p-2.5 bg-white border border-slate-200 rounded-lg">
-                          <div className="text-[10px] uppercase font-bold text-slate-400">Encounter Invoice</div>
+                        <div className="p-3 bg-white border border-slate-200 rounded-lg">
+                          <span className="text-xs font-semibold text-slate-700 block">Encounter Invoice</span>
                           {selectedDetails.linked_invoice ? (
-                            <div className="mt-1 flex items-center justify-between">
-                              <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded">
+                            <div className="mt-1.5 flex items-center justify-between">
+                              <span className="font-mono text-xs font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
                                 {selectedDetails.linked_invoice.invoice_number}
                               </span>
-                              <span className="font-bold text-slate-800">
+                              <span className="font-bold text-sm text-slate-900">
                                 ₹{selectedDetails.linked_invoice.total}
                               </span>
                             </div>
                           ) : (
-                            <div className="text-slate-400 italic text-[11px] mt-1">Unbilled</div>
+                            <div className="text-slate-400 italic text-xs mt-1.5">Unbilled</div>
                           )}
                         </div>
                       </div>
@@ -1706,8 +2015,8 @@ export default function ConsultationsView() {
                 </div>
 
                 {/* Modal Footer */}
-                <div className="modal-footer" style={{ justifyContent: "space-between" }}>
-                  <span className="text-slate-500 font-mono text-[11px]">
+                <div className="modal-footer" style={{ padding: "14px 20px", justifyContent: "space-between" }}>
+                  <span className="text-slate-600 font-mono text-xs font-medium">
                     {selectedDetails.is_finalised ? "🔒 Finalized Encounter" : "Draft Session (Editable)"}
                   </span>
                   <div className="flex items-center gap-2">
@@ -1726,6 +2035,7 @@ export default function ConsultationsView() {
                       type="button"
                       onClick={() => setIsDetailModalOpen(false)}
                       className="btn-cancel"
+                      style={{ padding: "8px 16px", fontSize: "12.5px" }}
                     >
                       Close
                     </button>
@@ -1885,6 +2195,25 @@ export default function ConsultationsView() {
                     <span className="font-mono text-xs font-semibold text-slate-700 bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
                       {encounterData.patient.phone}
                     </span>
+                    {encounterData.patient.abha_number && encounterData.patient.abha_number !== "-" ? (
+                      <button
+                        type="button"
+                        onClick={() => setAbdmModalPatient(encounterData.patient)}
+                        className="inline-flex items-center gap-1 font-mono text-xs font-bold text-emerald-800 bg-emerald-50 hover:bg-emerald-100 px-2 py-0.5 rounded border border-emerald-300 transition cursor-pointer"
+                        title="View official Government ABHA Health Card"
+                      >
+                        <span>🇮🇳 ABHA:</span> {encounterData.patient.abha_number}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setAbdmModalPatient(encounterData.patient)}
+                        className="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 px-2 py-0.5 rounded transition cursor-pointer"
+                        title="Create or Link ABHA Health ID"
+                      >
+                        <span>🇮🇳 Link ABHA</span>
+                      </button>
+                    )}
                     <span className="text-xs text-slate-600 font-medium">
                       • Attending: <strong className="text-slate-900">{encounterData.doctor.name}</strong>
                       {encounterData.doctor.specialization && (
@@ -3133,6 +3462,20 @@ export default function ConsultationsView() {
           </div>
         </div>
       )}
+
+      {/* ABDM & ABHA Management Modal */}
+      <AbdmModal
+        isOpen={!!abdmModalPatient}
+        patient={abdmModalPatient}
+        onClose={() => setAbdmModalPatient(null)}
+        onUpdated={() => {
+          loadData();
+          if (encounterData && abdmModalPatient?.id === encounterData.patient?.id) {
+            // refresh active encounter data if needed
+            loadData();
+          }
+        }}
+      />
     </div>
   );
 }

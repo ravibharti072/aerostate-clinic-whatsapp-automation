@@ -7,14 +7,14 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.database import get_db
-from app.models import Doctor, Appointment, Patient, ConversationSession, WhatsAppMessage, QueueEntry, StaffProfile, User
-from app.security import require_admin, require_superadmin
+from app.models import Doctor, Appointment, Patient, ConversationSession, WhatsAppMessage, QueueEntry, StaffProfile, User, Clinic
+from app.security import require_admin, require_superadmin, require_staff
 from app.services.booking import booking_service
 from app.services.whatsapp import whatsapp_client
 from app.services.messages import message_service
 from app.config import settings
 
-router = APIRouter(prefix="/admin", tags=["Clinic Admin"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin", tags=["Clinic Admin"], dependencies=[Depends(require_staff)])
 
 
 # ----------------------------------------------------
@@ -745,7 +745,7 @@ def get_eligible_staff_for_doctors(db: Session = Depends(get_db)):
     return results
 
 
-@router.post("/doctors")
+@router.post("/doctors", dependencies=[Depends(require_admin)])
 def create_doctor(payload: DoctorCreate, db: Session = Depends(get_db)):
     staff = None
     if payload.staff_id:
@@ -790,7 +790,7 @@ def create_doctor(payload: DoctorCreate, db: Session = Depends(get_db)):
     return {"message": "Specialist configured successfully from Staff Directory", "doctor": doctor}
 
 
-@router.put("/doctors/{doctor_id}")
+@router.put("/doctors/{doctor_id}", dependencies=[Depends(require_admin)])
 def update_doctor(doctor_id: int, payload: DoctorUpdate, db: Session = Depends(get_db)):
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
@@ -819,7 +819,7 @@ def update_doctor(doctor_id: int, payload: DoctorUpdate, db: Session = Depends(g
     return {"message": "Doctor updated successfully", "doctor": doctor}
 
 
-@router.delete("/doctors/{doctor_id}")
+@router.delete("/doctors/{doctor_id}", dependencies=[Depends(require_admin)])
 def toggle_or_delete_doctor(doctor_id: int, db: Session = Depends(get_db)):
     doctor = db.query(Doctor).filter(Doctor.id == doctor_id).first()
     if not doctor:
@@ -861,6 +861,8 @@ class SettingsUpdateRequest(BaseModel):
     clinic_tagline: Optional[str] = None
     clinic_reg_no: Optional[str] = None
     clinic_address: Optional[str] = None
+    clinic_city: Optional[str] = None
+    clinic_state: Optional[str] = None
     clinic_phone: Optional[str] = None
     clinic_email: Optional[str] = None
     clinic_hours: Optional[str] = None
@@ -919,7 +921,56 @@ def update_env_variable(key: str, value: str):
 
 
 @router.get("/settings")
-def get_system_settings():
+def get_system_settings(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    clinic = None
+    if current_user.clinic_id:
+        clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+    if not clinic:
+        clinic = db.query(Clinic).order_by(Clinic.id.asc()).first()
+
+    if clinic:
+        is_meta_configured = bool(
+            clinic.phone_number_id
+            and not clinic.phone_number_id.startswith("YOUR_")
+            and not clinic.phone_number_id.startswith("your_")
+            and (clinic.whatsapp_token or (settings.WHATSAPP_TOKEN and not settings.WHATSAPP_TOKEN.startswith("YOUR_")))
+        )
+        masked_token = ""
+        tok = clinic.whatsapp_token or settings.WHATSAPP_TOKEN
+        if tok and not tok.startswith("YOUR_") and not tok.startswith("your_"):
+            masked_token = tok[:8] + "••••••••" + tok[-6:] if len(tok) > 16 else "••••••••"
+
+        from app.routers.clinics import get_subscription_info
+        sub_info = get_subscription_info(clinic)
+
+        return {
+            "clinic_name": clinic.name or "",
+            "clinic_tagline": clinic.tagline or "",
+            "clinic_reg_no": getattr(settings, "CLINIC_REG_NO", "UP-AGR-2026-MED"),
+            "clinic_address": clinic.address or "",
+            "clinic_city": clinic.city or "",
+            "clinic_state": clinic.state or "",
+            "clinic_phone": clinic.phone or "",
+            "clinic_email": clinic.email or "",
+            "clinic_hours": clinic.operating_hours or "",
+            "opd_slot_duration": int(getattr(settings, "OPD_SLOT_DURATION", 15)),
+            "checkin_grace_period": int(getattr(settings, "CHECKIN_GRACE_PERIOD", 15)),
+            "emergency_tat": int(getattr(settings, "EMERGENCY_TAT", 30)),
+            "lab_tat_standard": int(getattr(settings, "LAB_TAT_STANDARD", 24)),
+            "followup_days": int(getattr(settings, "FOLLOWUP_DAYS", 7)),
+            "whatsapp_token": masked_token,
+            "phone_number_id": clinic.phone_number_id or "",
+            "verify_token": clinic.verify_token or settings.VERIFY_TOKEN,
+            "meta_graph_version": settings.META_GRAPH_VERSION,
+            "meta_configured": is_meta_configured,
+            "gemini_ai_configured": bool(settings.GEMINI_API_KEY and not settings.GEMINI_API_KEY.startswith("your_")),
+            "database_url": settings.DATABASE_URL.split("///")[-1],
+            **sub_info,
+        }
+
     is_meta_configured = bool(
         settings.WHATSAPP_TOKEN
         and not settings.WHATSAPP_TOKEN.startswith("YOUR_")
@@ -947,6 +998,8 @@ def get_system_settings():
         "clinic_tagline": getattr(settings, "CLINIC_TAGLINE", "Medical Center & OPD Consultation Services"),
         "clinic_reg_no": getattr(settings, "CLINIC_REG_NO", "UP-AGR-2026-MED"),
         "clinic_address": settings.CLINIC_ADDRESS,
+        "clinic_city": "",
+        "clinic_state": "",
         "clinic_phone": settings.CLINIC_PHONE,
         "clinic_email": getattr(settings, "CLINIC_EMAIL", "contact@aerostateclinic.com"),
         "clinic_hours": settings.CLINIC_HOURS,
@@ -966,8 +1019,75 @@ def get_system_settings():
 
 
 @router.put("/settings")
-def update_system_settings(payload: SettingsUpdateRequest):
-    """Updates Meta credentials and clinic info both in runtime memory and in .env."""
+def update_system_settings(
+    payload: SettingsUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Updates clinic info both in runtime memory/database and in .env."""
+    clinic = None
+    if current_user.clinic_id:
+        clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+    if not clinic:
+        clinic = db.query(Clinic).order_by(Clinic.id.asc()).first()
+
+    if clinic:
+        if payload.clinic_name is not None and payload.clinic_name.strip():
+            clinic.name = payload.clinic_name.strip()
+        if payload.clinic_tagline is not None:
+            clinic.tagline = payload.clinic_tagline.strip() if payload.clinic_tagline.strip() else None
+        if payload.clinic_address is not None:
+            clinic.address = payload.clinic_address.strip() if payload.clinic_address.strip() else None
+        if payload.clinic_city is not None:
+            clinic.city = payload.clinic_city.strip() if payload.clinic_city.strip() else None
+        if payload.clinic_state is not None:
+            clinic.state = payload.clinic_state.strip() if payload.clinic_state.strip() else None
+        if payload.clinic_phone is not None:
+            clinic.phone = payload.clinic_phone.strip() if payload.clinic_phone.strip() else None
+        if payload.clinic_email is not None:
+            clinic.email = payload.clinic_email.strip() if payload.clinic_email.strip() else None
+        if payload.clinic_hours is not None:
+            clinic.operating_hours = payload.clinic_hours.strip() if payload.clinic_hours.strip() else None
+        if payload.phone_number_id is not None:
+            clean_pid = payload.phone_number_id.strip() if payload.phone_number_id.strip() else None
+            if clean_pid:
+                existing = db.query(Clinic).filter(Clinic.phone_number_id == clean_pid, Clinic.id != clinic.id).first()
+                if existing:
+                    raise HTTPException(status_code=400, detail=f"Phone Number ID '{clean_pid}' already registered to another clinic")
+            clinic.phone_number_id = clean_pid
+        if payload.whatsapp_token is not None:
+            clean_tok = payload.whatsapp_token.strip()
+            if clean_tok and not clean_tok.startswith("••••") and not clean_tok.startswith("YOUR_"):
+                clinic.whatsapp_token = clean_tok
+            elif clean_tok == "":
+                clinic.whatsapp_token = None
+        if payload.verify_token is not None:
+            clinic.verify_token = payload.verify_token.strip() if payload.verify_token.strip() else None
+        db.commit()
+        db.refresh(clinic)
+
+        # Synchronize runtime settings and .env with the database
+        if clinic.name:
+            settings.CLINIC_NAME = clinic.name
+            update_env_variable("CLINIC_NAME", clinic.name)
+        if clinic.address:
+            settings.CLINIC_ADDRESS = clinic.address
+            update_env_variable("CLINIC_ADDRESS", clinic.address)
+        if clinic.phone:
+            settings.CLINIC_PHONE = clinic.phone
+            update_env_variable("CLINIC_PHONE", clinic.phone)
+        if clinic.operating_hours:
+            settings.CLINIC_HOURS = clinic.operating_hours
+            update_env_variable("CLINIC_HOURS", clinic.operating_hours)
+        if clinic.phone_number_id:
+            settings.PHONE_NUMBER_ID = clinic.phone_number_id
+            update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id)
+        if clinic.whatsapp_token:
+            settings.WHATSAPP_TOKEN = clinic.whatsapp_token
+            update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
+        if clinic.verify_token:
+            settings.VERIFY_TOKEN = clinic.verify_token
+            update_env_variable("VERIFY_TOKEN", clinic.verify_token)
     if payload.whatsapp_token and payload.whatsapp_token.strip():
         token = payload.whatsapp_token.strip()
         settings.WHATSAPP_TOKEN = token
@@ -1039,7 +1159,7 @@ class MetaTestRequest(BaseModel):
     whatsapp_token: Optional[str] = None
 
 
-@router.post("/settings/test-meta")
+@router.post("/settings/test-meta", dependencies=[Depends(require_admin)])
 async def test_meta_connection(payload: Optional[MetaTestRequest] = None):
     """Live connectivity verification with Meta WhatsApp Cloud API."""
     pid = (payload.phone_number_id.strip() if payload and payload.phone_number_id else None)

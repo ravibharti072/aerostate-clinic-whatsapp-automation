@@ -1,0 +1,8 @@
+{
+  "version": "2.2.5",
+  "name": "AeroState Clinic v2.2.5",
+  "release_date": "2026-10-26",
+  "release_notes": "Offline SQLite WAL synchronization, WhatsApp offline outbox, standalone portable executable, setup wizard installer, and automatic update system.",
+  "download_url": "https://github.com/ravibharti072/aerostate-clinic-whatsapp-automation/releases/latest/download/AerostateClinic.exe",
+  "setup_download_url": "https://github.com/ravibharti072/aerostate-clinic-whatsapp-automation/releases/latest/download/AerostateClinic_Setup.exe"
+}

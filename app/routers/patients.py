@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.security import require_admin
+from app.security import require_staff
 import app.models as models
 
-router = APIRouter(prefix="/admin/patients", tags=["Patient Registry & EMR"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/patients", tags=["Patient Registry & EMR"], dependencies=[Depends(require_staff)])
 
 
 class AllergyItem(BaseModel):
@@ -310,6 +310,8 @@ def list_patients(
                 | (models.Patient.phone.ilike(search_filter))
                 | (models.Patient.patient_uid.ilike(search_filter))
                 | (models.Patient.aadhaar_number.ilike(search_filter))
+                | (models.Patient.abha_number.ilike(search_filter))
+                | (models.Patient.abha_address.ilike(search_filter))
                 | (models.Appointment.aadhaar_number.ilike(search_filter))
                 | (models.Appointment.notes.ilike(search_filter))
                 | (models.Appointment.visit_type.ilike(search_filter))
@@ -438,6 +440,9 @@ def list_patients(
             "next_status": next_status,
             "next_visit_type": next_visit_type,
             "aadhaar_number": p.aadhaar_number or "-",
+            "abha_number": p.abha_number or "-",
+            "abha_address": p.abha_address or "-",
+            "abha_status": p.abha_status or "UNLINKED",
             "address": p.address or "-",
             "city": p.city or "Agra",
             "created_at": p.created_at.strftime("%d %b %Y") if p.created_at else "-",
@@ -726,26 +731,78 @@ def get_patient_profile(patient_id: int, db: Session = Depends(get_db)):
         except Exception:
             db.rollback()
 
-    # 6. Billing & Invoices
+    # 6. Billing & Invoices (Unified Financial Ledger: Invoices + Appointment Fee Collections)
     invoices = (
         db.query(models.Invoice)
         .filter(models.Invoice.patient_id == patient.id)
         .order_by(models.Invoice.created_at.desc())
         .all()
     )
-    invoice_records = [
-        {
+    billing_records = []
+
+    # 6a. Clinical Invoices (Pharmacy, Diagnostics, General)
+    for inv in invoices:
+        amount_paid = inv.amount_paid if inv.amount_paid is not None else (inv.total if inv.payment_status == "PAID" else 0)
+        balance_due = inv.balance_due if inv.balance_due is not None else (0 if inv.payment_status == "PAID" else inv.total)
+        billing_records.append({
             "id": inv.id,
+            "type": "invoice",
             "invoice_number": inv.invoice_number,
+            "reference_number": inv.invoice_number,
+            "title": f"Invoice ({inv.invoice_number})",
+            "category": "Pharmacy & Services",
+            "description": "Clinical pharmacy, diagnostic & medical services invoice",
             "total": inv.total,
-            "amount_paid": inv.amount_paid or (inv.total if inv.payment_status == "PAID" else 0),
-            "balance_due": inv.balance_due or (0 if inv.payment_status == "PAID" else inv.total),
+            "amount_paid": amount_paid,
+            "balance_due": balance_due,
             "payment_status": inv.payment_status,
-            "payment_method": inv.payment_method,
+            "payment_method": inv.payment_method or "Cash",
             "created_at": inv.created_at.strftime("%d %b %Y") if inv.created_at else "-",
-        }
-        for inv in invoices
-    ]
+            "raw_date": inv.created_at.isoformat() if inv.created_at else "",
+        })
+
+    # 6b. Appointment Consultation Fees (Collected / received at the time of appointment)
+    for a in appointments:
+        fee = a.paid_amount if a.paid_amount is not None else (a.doctor.consultation_fee if (a.doctor and a.doctor.consultation_fee) else 500)
+        is_paid = (a.payment_status == "PAID")
+        amt_paid = fee if is_paid else 0
+        bal_due = 0 if is_paid else fee
+
+        # Avoid duplicate record if an invoice was already explicitly linked to this appointment
+        has_linked_invoice = any(inv.appointment_id == a.id for inv in invoices)
+        if not has_linked_invoice:
+            date_display = a.appointment_date or "-"
+            if a.appointment_date:
+                try:
+                    dt = datetime.datetime.strptime(a.appointment_date, "%Y-%m-%d")
+                    date_display = dt.strftime("%d %b %Y")
+                except Exception:
+                    pass
+            doc_name = a.doctor.name if a.doctor else "Attending Specialist"
+            billing_records.append({
+                "id": a.id,
+                "type": "appointment_fee",
+                "invoice_number": f"APT-{a.id:04d}",
+                "reference_number": f"APT-{a.id:04d}",
+                "title": f"Consultation Fee (APT-{a.id:04d})",
+                "category": "Consultation Fee",
+                "description": f"{a.visit_type or 'Consultation'} with {doc_name} (Received at appointment time)",
+                "doctor_name": doc_name,
+                "total": fee,
+                "amount_paid": amt_paid,
+                "balance_due": bal_due,
+                "payment_status": a.payment_status or ("PAID" if amt_paid > 0 else "PENDING"),
+                "payment_method": a.payment_method or ("UPI" if is_paid else "Pay at Clinic"),
+                "created_at": f"{date_display} ({a.start_time})" if a.start_time else date_display,
+                "raw_date": f"{a.appointment_date}T{a.start_time or '00:00'}",
+            })
+
+    # Sort all financial transactions chronologically descending
+    billing_records.sort(key=lambda r: r.get("raw_date", ""), reverse=True)
+
+    total_billed = sum(b["total"] for b in billing_records)
+    total_received = sum(b["amount_paid"] for b in billing_records)
+    total_due = sum(b["balance_due"] for b in billing_records)
 
     return {
         "overview": {
@@ -764,6 +821,9 @@ def get_patient_profile(patient_id: int, db: Session = Depends(get_db)):
             "emergency_name": patient.emergency_name or "-",
             "emergency_phone": patient.emergency_phone or "-",
             "aadhaar_number": patient.aadhaar_number or (last_appt.aadhaar_number if (last_appt and last_appt.aadhaar_number) else "-"),
+            "abha_number": patient.abha_number or "-",
+            "abha_address": patient.abha_address or "-",
+            "abha_status": patient.abha_status or "UNLINKED",
             "registration_source": "WhatsApp" if "whatsapp" in (patient.registration_source or "").lower() else "Direct",
             "total_visits": len(appointments),
             "completed_visits": sum(1 for a in appointments if a.status == "COMPLETED"),
@@ -793,7 +853,12 @@ def get_patient_profile(patient_id: int, db: Session = Depends(get_db)):
         "prescriptions": prescription_records,
         "laboratory": lab_records,
         "appointments": appointment_records,
-        "billing": invoice_records,
+        "billing": billing_records,
+        "billing_summary": {
+            "total_billed": total_billed,
+            "total_received": total_received,
+            "total_balance_due": total_due,
+        },
     }
 
 

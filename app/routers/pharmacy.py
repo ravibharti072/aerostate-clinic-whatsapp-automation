@@ -8,9 +8,9 @@ from sqlalchemy import func
 from app.database import get_db
 import app.models as models
 from app.services.pdf_service import generate_invoice_pdf, build_pdf_filename
-from app.security import require_admin
+from app.security import require_staff
 
-router = APIRouter(prefix="/admin/pharmacy", tags=["Pharmacy & Medicine Inventory"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/pharmacy", tags=["Pharmacy & Medicine Inventory"], dependencies=[Depends(require_staff)])
 
 
 class MedicineCreate(BaseModel):

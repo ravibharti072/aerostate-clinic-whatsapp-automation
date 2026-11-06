@@ -29,7 +29,11 @@ import {
   FiChevronLeft,
   FiChevronRight,
   FiExternalLink,
+  FiList,
+  FiGrid,
+  FiPhone,
 } from "react-icons/fi";
+import { FaRupeeSign } from "react-icons/fa";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
 import ModuleWriternHeader from "./modulewriternheader/ModuleWriternHeader";
@@ -98,6 +102,9 @@ export default function LaboratoryView() {
     if (activeTab === "complete") return completedOrders;
     return orders;
   }, [activeTab, pendingOrders, completedOrders, orders]);
+
+  // View mode switcher: "table" (default) or "cards" on desktop; always cards on mobile
+  const [desktopViewMode, setDesktopViewMode] = useState("table");
 
   // Pagination for Queue (20 entries per page default from LRS)
   const [currentPage, setCurrentPage] = useState(1);
@@ -779,7 +786,14 @@ export default function LaboratoryView() {
       loadData(search, statusFilter, true);
       if (res.invoice_id) {
         fetchInvoice(res.invoice_id)
-          .then((inv) => setSelectedReceipt(inv))
+          .then((inv) => {
+            if (collectTargetOrder) {
+              inv.patient_name = inv.patient?.name || collectTargetOrder.patient_name;
+              inv.patient_phone = inv.patient?.phone || collectTargetOrder.patient_phone;
+              inv.order_uid = collectTargetOrder.order_uid;
+            }
+            setSelectedReceipt(inv);
+          })
           .catch(() => {});
       }
     } catch (err) {
@@ -830,7 +844,14 @@ export default function LaboratoryView() {
       loadData(search, statusFilter, true);
       if (res.invoice_id) {
         fetchInvoice(res.invoice_id)
-          .then((inv) => setSelectedReceipt(inv))
+          .then((inv) => {
+            if (collectTargetOrder) {
+              inv.patient_name = inv.patient?.name || collectTargetOrder.patient_name;
+              inv.patient_phone = inv.patient?.phone || collectTargetOrder.patient_phone;
+              inv.order_uid = collectTargetOrder.order_uid;
+            }
+            setSelectedReceipt(inv);
+          })
           .catch(() => {});
       }
     } catch (err) {
@@ -874,6 +895,11 @@ export default function LaboratoryView() {
       if (order) {
         inv.order_id = order.id;
         inv.order_uid = order.order_uid;
+        inv.patient_name = inv.patient?.name || order.patient_name;
+        inv.patient_phone = inv.patient?.phone || order.patient_phone;
+      } else if (inv.patient) {
+        inv.patient_name = inv.patient.name;
+        inv.patient_phone = inv.patient.phone;
       }
       setSelectedReceipt(inv);
     } catch (err) {
@@ -1069,8 +1095,9 @@ export default function LaboratoryView() {
         kicker="Diagnostics"
         title="Laboratory & Diagnostic Management"
         icon={FiActivity}
+        actionsBelowOnMobile={true}
         rightAction={
-          <div className="lead-header-actions flex items-center gap-2.5">
+          <div className="lead-header-actions flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={loadData}
@@ -1082,17 +1109,18 @@ export default function LaboratoryView() {
             </button>
             <button
               onClick={() => setIsCreateOrderOpen(true)}
-              className="portal-action-btn flex items-center gap-1.5"
+              className="portal-action-btn flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
             >
               <FiPlus size={15} />
-              <span>Place Lab Order</span>
+              <span>Place Order</span>
             </button>
             <button
               onClick={() => setIsAddTestOpen(true)}
-              className="portal-action-btn portal-action-btn-blue flex items-center gap-1.5"
+              className="portal-action-btn portal-action-btn-blue flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
             >
               <FiPlus size={15} />
-              <span>Add Test to Catalogue</span>
+              <span className="hidden sm:inline">Add Test to Catalogue</span>
+              <span className="inline sm:hidden">Add Test</span>
             </button>
           </div>
         }
@@ -1224,14 +1252,40 @@ export default function LaboratoryView() {
                   </select>
                 )}
 
-                <button
-                  type="button"
-                  onClick={handleSearchSubmit}
-                  className="btn-submit"
-                  style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
+                {/* Desktop View Switcher */}
+                <div
+                  className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+                  style={{ height: "34px" }}
                 >
-                  Search
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopViewMode("table")}
+                    className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      desktopViewMode === "table"
+                        ? "bg-white text-slate-900 shadow-xs font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    style={{ height: "28px" }}
+                    title="Spreadsheet List View"
+                  >
+                    <FiList size={13} />
+                    <span>List View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopViewMode("cards")}
+                    className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      desktopViewMode === "cards"
+                        ? "bg-[#254d90] text-white shadow-xs font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    style={{ height: "28px" }}
+                    title="Responsive Cards View"
+                  >
+                    <FiGrid size={13} />
+                    <span>Cards View</span>
+                  </button>
+                </div>
 
                 {hasActiveFilters && (
                   <button
@@ -1262,7 +1316,10 @@ export default function LaboratoryView() {
                 </p>
               </div>
             ) : (
-              <div className="dir-table-wrapper">
+              <>
+                {/* Desktop Table View */}
+                {desktopViewMode === "table" && (
+                  <div className="dir-table-wrapper laboratory-desktop-table hidden md:flex flex-col">
                 <div className="dir-scroll-bar-header" style={{ justifyContent: "space-between", padding: "8px 14px" }}>
                   <span className="text-xs font-semibold text-slate-500">
                     Showing {paginatedOrders.length} of {currentTabOrders.length} orders
@@ -1385,7 +1442,7 @@ export default function LaboratoryView() {
                             <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                               {o.is_finalised === false ? (
                                 <span
-                                  className="px-2.5 py-0.5 rounded font-bold border bg-purple-50 text-purple-700 border-purple-200 inline-block"
+                                  className="px-2.5 py-0.5 rounded font-bold border bg-amber-50 text-amber-800 border-amber-200 inline-block"
                                   style={{ fontSize: "11px" }}
                                   title="Draft diagnostic order attached to ongoing consultation"
                                 >
@@ -1407,7 +1464,7 @@ export default function LaboratoryView() {
                                 </span>
                               ) : o.status === "PROCESSING" ? (
                                 <span
-                                  className="px-2.5 py-0.5 rounded font-bold border bg-indigo-50 text-indigo-700 border-indigo-200 inline-block"
+                                  className="px-2.5 py-0.5 rounded font-bold border bg-blue-50 text-blue-700 border-blue-200 inline-block"
                                   style={{ fontSize: "11px" }}
                                 >
                                   Processing
@@ -1466,10 +1523,10 @@ export default function LaboratoryView() {
                                     <button
                                       type="button"
                                       onClick={() => navigate(`/consultations?encounter_id=${o.encounter_id}&auto_open=true`)}
-                                      className="w-full h-[52px] flex flex-col items-center justify-center gap-0.5 px-2 py-1 text-[11px] font-bold rounded bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 shadow-xs transition cursor-pointer"
+                                      className="w-full h-[52px] flex flex-col items-center justify-center gap-0.5 px-2 py-1 text-[11px] font-bold rounded bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 shadow-xs transition cursor-pointer"
                                       title="Active consultation draft: click to open Clinical Encounter Workspace and finalize"
                                     >
-                                      <FiEdit2 size={13} className="text-purple-600" />
+                                      <FiEdit2 size={13} className="text-amber-600" />
                                       <span>Draft Order</span>
                                     </button>
                                   </div>
@@ -1633,6 +1690,295 @@ export default function LaboratoryView() {
                 </div>
               </div>
             )}
+
+            {/* Diagnostic Orders Mobile & Cards View */}
+            <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full space-y-3`}>
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1 py-1">
+                <span>Showing {paginatedOrders.length} of {currentTabOrders.length} orders</span>
+                {activeTab === "pending" && statusFilter && (
+                  <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded text-[11px] font-bold">
+                    Filter: {statusFilter}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {paginatedOrders.map((o) => {
+                  const doctorDisplay = o.doctor_name
+                    ? o.doctor_name.startsWith("Dr.")
+                      ? o.doctor_name
+                      : `Dr. ${o.doctor_name}`
+                    : "Attending Doctor";
+
+                  return (
+                    <div
+                      key={o.id}
+                      className="bg-white rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-3.5 flex flex-col justify-between gap-3 text-slate-800"
+                    >
+                      {/* Top: UID, Priority, Status */}
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-[#254d90] bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded">
+                              {o.order_uid || `LAB-${o.id}`}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                                o.priority === "STAT"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200"
+                                  : o.priority === "URGENT"
+                                  ? "bg-amber-50 text-amber-700 border-amber-200"
+                                  : "bg-slate-50 text-slate-600 border-slate-200"
+                              }`}
+                            >
+                              {o.priority || "ROUTINE"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1">
+                            <FiCalendar size={11} className="text-slate-400" />
+                            <span>{o.created_at || "—"}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {o.is_finalised === false ? (
+                            <span className="px-2 py-0.5 rounded font-bold border bg-amber-50 text-amber-800 border-amber-200 text-[10.5px] inline-block">
+                              In Consultation
+                            </span>
+                          ) : o.status === "COMPLETED" ? (
+                            <span className="px-2 py-0.5 rounded font-bold border bg-emerald-50 text-emerald-700 border-emerald-200 text-[10.5px] inline-block">
+                              Completed
+                            </span>
+                          ) : o.status === "SAMPLE_COLLECTED" ? (
+                            <span className="px-2 py-0.5 rounded font-bold border bg-blue-50 text-blue-700 border-blue-200 text-[10.5px] inline-block">
+                              Sample Collected
+                            </span>
+                          ) : o.status === "PROCESSING" ? (
+                            <span className="px-2 py-0.5 rounded font-bold border bg-blue-50 text-blue-700 border-blue-200 text-[10.5px] inline-block">
+                              Processing
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded font-bold border bg-amber-50 text-amber-700 border-amber-200 text-[10.5px] inline-block">
+                              Ordered
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Patient & Doctor Details */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-sm truncate" title={o.patient_name}>
+                            {o.patient_name || "Walk-in Patient"}
+                          </span>
+                          {(o.patient_phone || o.patient_phone_display) && (
+                            <a
+                              href={`tel:${o.patient_phone || o.patient_phone_display}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-mono text-[#254d90] hover:text-[#1e3f78] bg-blue-50/60 hover:bg-blue-50 px-2 py-0.5 rounded transition shrink-0 ml-2"
+                            >
+                              <FiPhone size={10} />
+                              <span>{o.patient_phone_display || o.patient_phone}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-1 text-slate-600 text-[11.5px]">
+                          <FiUser size={12} className="text-slate-400 shrink-0" />
+                          <span className="font-medium text-slate-700 truncate">{doctorDisplay}</span>
+                        </div>
+
+                        {o.clinical_indication && (
+                          <div className="bg-slate-50 border border-slate-100 rounded p-1.5 text-[11px] text-slate-600 line-clamp-2">
+                            <span className="font-semibold text-slate-700">Diagnosis: </span>
+                            {o.clinical_indication}
+                          </div>
+                        )}
+
+                        {/* Tests Requested */}
+                        <div className="bg-blue-50/50 border border-blue-100 rounded p-2 text-xs">
+                          <div className="flex items-center justify-between font-semibold text-slate-700 text-[11px] mb-0.5">
+                            <span className="text-blue-900 font-bold">Tests Requested</span>
+                            <span className="text-[#126868] font-mono font-bold text-xs">
+                              {o.formatted_price || `₹${o.total_price || 0}`}
+                            </span>
+                          </div>
+                          <p className="text-slate-700 font-medium text-[11.5px] line-clamp-2">
+                            {o.tests_summary || `${o.tests_count || 1} test(s)`}
+                          </p>
+                        </div>
+
+                        {/* Billing status */}
+                        <div className="flex items-center justify-between pt-1 text-[11px]">
+                          <span className="text-slate-500 font-medium">Payment Status:</span>
+                          {o.invoice ? (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCollectModal(o)}
+                              className="text-left font-bold"
+                            >
+                              {o.invoice.payment_status === "PAID" ? (
+                                <span className="text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded text-[10.5px] inline-flex items-center gap-1">
+                                  <FiCheck size={10} /> PAID ({o.invoice.payment_method || "Cash"})
+                                </span>
+                              ) : o.invoice.payment_status === "PARTIAL" ? (
+                                <span className="text-amber-700 bg-amber-50 border border-amber-200 px-2 py-0.5 rounded text-[10.5px]">
+                                  PARTIAL (Due: ₹{o.invoice.balance_due})
+                                </span>
+                              ) : (
+                                <span className="text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded text-[10.5px]">
+                                  PENDING (Due: ₹{o.invoice.balance_due})
+                                </span>
+                              )}
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCollectModal(o)}
+                              className="font-bold text-rose-700 bg-rose-50 border border-rose-200 px-2 py-0.5 rounded text-[10.5px]"
+                            >
+                              PENDING (₹{o.total_price || 0})
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                        {/* Workflow Main Action */}
+                        {o.is_finalised === false ? (
+                          <button
+                            type="button"
+                            onClick={() => navigate(`/consultations?encounter_id=${o.encounter_id}&auto_open=true`)}
+                            className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded bg-amber-50 text-amber-800 hover:bg-amber-100 border border-amber-200 shadow-xs transition"
+                          >
+                            <FiEdit2 size={12} />
+                            <span>Draft Order</span>
+                          </button>
+                        ) : o.status === "ORDERED" ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleSampleCollect(o.id)}
+                              className="flex-1 min-w-[95px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded bg-amber-600 text-white hover:bg-amber-700 shadow-xs transition"
+                            >
+                              <FiDroplet size={12} />
+                              <span>Collect</span>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenOrder(o.id)}
+                              className="flex-1 min-w-[95px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-xs transition"
+                            >
+                              <FiActivity size={12} className="text-[#254d90]" />
+                              <span>Workstation</span>
+                            </button>
+                          </>
+                        ) : o.status === "COMPLETED" ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenOrder(o.id)}
+                            className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition"
+                          >
+                            <FiFileText size={13} />
+                            <span>Report</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenOrder(o.id)}
+                            className="flex-1 min-w-[120px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded bg-[#254d90] text-white hover:bg-[#1b396b] shadow-xs transition"
+                          >
+                            <FiActivity size={13} />
+                            <span>Workstation</span>
+                          </button>
+                        )}
+
+                        {/* Collect / Paid button */}
+                        {(!o.invoice || o.invoice.payment_status !== "PAID") ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCollectModal(o)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded bg-emerald-700 text-white hover:bg-emerald-800 shadow-xs transition"
+                          >
+                            <FiDollarSign size={12} />
+                            <span>Collect ₹{o.invoice?.balance_due != null ? o.invoice.balance_due : (o.total_price || 0)}</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCollectModal(o)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs transition"
+                          >
+                            <FiCheck size={12} className="text-emerald-600" />
+                            <span>Paid</span>
+                          </button>
+                        )}
+
+                        {/* Receipt */}
+                        {(o.invoice_id || o.invoice?.id) ? (
+                          <button
+                            type="button"
+                            onClick={() => handleViewReceipt(o.invoice_id || o.invoice.id, o)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-xs transition"
+                            title="Receipt"
+                          >
+                            <FiPrinter size={12} className="text-slate-500" />
+                            <span>Receipt</span>
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenCollectModal(o)}
+                            className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded bg-white hover:bg-slate-50 text-slate-400 border border-slate-200 shadow-xs transition"
+                            title="Receipt"
+                          >
+                            <FiPrinter size={12} className="text-slate-400" />
+                            <span>Receipt</span>
+                          </button>
+                        )}
+
+                        {/* Consult */}
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (o.encounter_id) {
+                              navigate(`/consultations?encounter_id=${o.encounter_id}&auto_open=true`);
+                            } else {
+                              const params = new URLSearchParams();
+                              if (o.patient_id) params.set("patient_id", o.patient_id);
+                              if (o.patient_name) params.set("patient_name", o.patient_name);
+                              if (o.patient_phone) params.set("patient_phone", o.patient_phone);
+                              navigate(`/consultations?${params.toString()}`);
+                            }
+                          }}
+                          className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 shadow-xs transition"
+                          title="Consultation Workspace"
+                        >
+                          <FiExternalLink size={12} className="text-[#254d90]" />
+                          <span>Consult</span>
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Pagination for Mobile & Cards */}
+              <Pagination
+                currentPage={currentPage}
+                totalItems={currentTabOrders.length}
+                pageSize={pageSize}
+                onPageChange={(p) => setCurrentPage(p)}
+                onPageSizeChange={(sz) => {
+                  setPageSize(sz);
+                  setCurrentPage(1);
+                }}
+                pageSizeOptions={[10, 20, 50, 100]}
+                itemLabel={activeTab === "pending" ? "pending orders" : "complete orders"}
+              />
+            </div>
+          </>
+        )}
           </>
         ) : (
         /* ======================================================== */
@@ -2917,25 +3263,50 @@ export default function LaboratoryView() {
                       </div>
 
                       {orderPaymentMode === "Cash" ? (
-                        <div>
-                          <label className="text-[11px] font-semibold text-slate-700 block mb-1">
-                            Cash Tendered &amp; Change Return
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="number"
-                              min="0"
-                              placeholder="Amount received from patient..."
-                              value={orderCashTendered}
-                              onChange={(e) => setOrderCashTendered(e.target.value)}
-                              className="w-1/2 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                            />
-                            <div className="w-1/2 px-2.5 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
-                              <span className="text-[10px] text-slate-400 font-sans">Change:</span>
-                              <span className="text-emerald-700 font-bold">
-                                ₹{Math.max(0, (parseFloat(orderCashTendered) || 0) - totalSelectedPrice)}
+                        <div className="grid grid-cols-2 gap-2.5">
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                              Cash Tendered (₹)
+                            </label>
+                            <div className="relative">
+                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs select-none">
+                                ₹
                               </span>
+                              <input
+                                type="number"
+                                min="0"
+                                placeholder="Amount received..."
+                                value={orderCashTendered}
+                                onChange={(e) => setOrderCashTendered(e.target.value)}
+                                className="w-full pl-6 pr-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                                style={{ height: "34px" }}
+                              />
                             </div>
+                          </div>
+                          <div>
+                            <label className="text-[11px] font-semibold text-slate-700 block mb-1">
+                              Change to Return (₹)
+                            </label>
+                            {(() => {
+                              const change = Math.max(0, (parseFloat(orderCashTendered) || 0) - totalSelectedPrice);
+                              return (
+                                <div
+                                  className={`w-full px-2.5 py-1.5 rounded-lg border text-xs font-mono font-bold flex items-center justify-between ${
+                                    change > 0
+                                      ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                      : "bg-slate-50 border-slate-200 text-slate-500"
+                                  }`}
+                                  style={{ height: "34px" }}
+                                >
+                                  <span className="text-[11px] font-medium font-sans">
+                                    {change > 0 ? "Return:" : "Change:"}
+                                  </span>
+                                  <span className={`text-xs font-bold font-mono ${change > 0 ? "text-emerald-700" : "text-slate-700"}`}>
+                                    ₹{change.toLocaleString()}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </div>
                         </div>
                       ) : (
@@ -3339,58 +3710,73 @@ export default function LaboratoryView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "480px" }}
+            style={{ maxWidth: "500px" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
+            <div className="modal-header" style={{ padding: "16px 20px" }}>
               <div>
-                <h2>Collect Laboratory Payment</h2>
-                <div className="modal-kicker">Diagnostic billing counter &amp; instant receipt</div>
+                <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                  <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                    <FaRupeeSign size={12} />
+                  </span>
+                  <span>Collect Laboratory Payment</span>
+                </h2>
+                <div className="text-xs text-slate-500 font-medium mt-0.5">
+                  Diagnostic billing counter &amp; instant receipt
+                </div>
               </div>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setIsCollectModalOpen(false)}
+                title="Close"
               >
                 <FiX size={18} />
               </button>
             </div>
 
             <form onSubmit={handleConfirmCollectPayment} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <div className="modal-body space-y-3.5">
+              <div className="modal-body space-y-3.5" style={{ padding: "16px 20px" }}>
                 {/* Summary Info */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-1 text-xs">
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Order UID:</span>
-                    <span className="font-mono font-bold text-slate-900">{collectTargetOrder.order_uid}</span>
-                  </div>
-                  {collectTargetOrder.invoice && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Invoice:</span>
-                      <span className="font-mono font-bold text-slate-900">{collectTargetOrder.invoice.invoice_number}</span>
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5 text-xs">
+                  <div className="flex items-center justify-between gap-2 flex-wrap">
+                    <div>
+                      <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider block">Patient</span>
+                      <div className="font-bold text-sm text-slate-900">
+                        {collectTargetOrder.patient_name}
+                      </div>
                     </div>
-                  )}
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Patient:</span>
-                    <span className="font-bold text-slate-900">{collectTargetOrder.patient_name}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-mono text-xs font-bold text-[#126868] bg-[#126868]/10 border border-[#126868]/30 px-2 py-0.5 rounded">
+                        {collectTargetOrder.order_uid}
+                      </span>
+                      {collectTargetOrder.invoice && (
+                        <span className="font-mono text-xs font-bold text-[#254d90] bg-[#254d90]/10 border border-[#254d90]/20 px-2 py-0.5 rounded">
+                          {collectTargetOrder.invoice.invoice_number}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-slate-500">Total Diagnostic Charges:</span>
-                    <span className="font-bold text-slate-900 font-mono">
+
+                  <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between text-xs text-slate-600">
+                    <span>Total Diagnostic Charges:</span>
+                    <span className="font-bold text-slate-900 font-mono text-xs">
                       ₹{(collectTargetOrder.invoice?.total != null ? collectTargetOrder.invoice.total : collectTargetOrder.total_price || 0).toLocaleString()}
                     </span>
                   </div>
+
                   {collectTargetOrder.invoice?.amount_paid > 0 && (
-                    <div className="flex justify-between">
-                      <span className="text-slate-500">Amount Paid So Far:</span>
-                      <span className="font-bold text-emerald-700 font-mono">
+                    <div className="flex items-center justify-between text-xs text-slate-600">
+                      <span>Amount Paid So Far:</span>
+                      <span className="font-bold text-emerald-700 font-mono text-xs">
                         ₹{(collectTargetOrder.invoice.amount_paid || 0).toLocaleString()}
                       </span>
                     </div>
                   )}
-                  <div className="flex justify-between pt-1 border-t border-slate-200">
-                    <span className="text-slate-700 font-semibold">Balance Due:</span>
-                    <span className="font-bold text-emerald-700 font-mono text-sm">
+
+                  <div className="pt-2 border-t border-slate-200/80 flex items-center justify-between bg-emerald-50/70 border border-emerald-200 rounded-lg px-3 py-2 text-emerald-900">
+                    <span className="font-semibold text-xs">Balance Due:</span>
+                    <span className="font-mono font-bold text-base text-emerald-700">
                       ₹{(collectTargetOrder.invoice?.balance_due != null ? collectTargetOrder.invoice.balance_due : collectTargetOrder.total_price || 0).toLocaleString()}
                     </span>
                   </div>
@@ -3418,7 +3804,7 @@ export default function LaboratoryView() {
 
                 {/* Payment Methods */}
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-xs font-semibold text-slate-700 block mb-1.5">
                     Payment Method *
                   </label>
                   <div className="grid grid-cols-4 gap-2">
@@ -3427,11 +3813,12 @@ export default function LaboratoryView() {
                         key={mode}
                         type="button"
                         onClick={() => setCollectForm({ ...collectForm, payment_method: mode })}
-                        className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
+                        className={`py-2 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center flex items-center justify-center gap-1 ${
                           collectForm.payment_method === mode
-                            ? "bg-[#254d90] text-white border-[#254d90] shadow-xs"
-                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                            ? "bg-[#254d90] text-white border-[#254d90] shadow-xs font-bold"
+                            : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300"
                         }`}
+                        style={{ height: "36px" }}
                       >
                         {mode === "UPI" ? "UPI / QR" : mode}
                       </button>
@@ -3441,45 +3828,78 @@ export default function LaboratoryView() {
 
                 {/* Amount to Collect */}
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
+                  <label className="text-xs font-semibold text-slate-700 block mb-1.5">
                     Amount to Collect (₹) *
                   </label>
-                  <input
-                    type="number"
-                    required
-                    min={1}
-                    value={collectForm.amount}
-                    onChange={(e) => setCollectForm({ ...collectForm, amount: e.target.value })}
-                    className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-bold font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                  />
+                  <div className="flex items-center w-full rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:border-[#254d90] focus-within:ring-1 focus-within:ring-[#254d90] transition" style={{ height: "40px" }}>
+                    <span className="px-3 bg-slate-50 border-r border-slate-200 text-slate-600 font-mono font-bold text-sm h-full flex items-center justify-center select-none shrink-0">
+                      ₹
+                    </span>
+                    <input
+                      type="number"
+                      required
+                      min={1}
+                      value={collectForm.amount}
+                      onChange={(e) => setCollectForm({ ...collectForm, amount: e.target.value })}
+                      className="!border-none !outline-none !shadow-none !h-full !px-3 text-sm font-bold font-mono text-slate-900 bg-transparent w-full"
+                    />
+                  </div>
                 </div>
 
-                {/* If Cash: Tendered & Change */}
+                {/* If Cash: Tendered & Change Matching Sections */}
                 {collectForm.payment_method === "Cash" ? (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Cash Tendered &amp; Change Calculator
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Cash received from patient..."
-                        value={collectForm.cash_tendered || ""}
-                        onChange={(e) => setCollectForm({ ...collectForm, cash_tendered: e.target.value })}
-                        className="w-1/2 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                      />
-                      <div className="w-1/2 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-sans">Change:</span>
-                        <span className="text-emerald-700 font-bold">
-                          ₹{Math.max(0, (parseFloat(collectForm.cash_tendered) || 0) - (parseFloat(collectForm.amount) || 0))}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                        Cash Tendered (₹)
+                      </label>
+                      <div className="flex items-center w-full rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:border-[#254d90] focus-within:ring-1 focus-within:ring-[#254d90] transition" style={{ height: "40px" }}>
+                        <span className="px-3 bg-slate-50 border-r border-slate-200 text-slate-600 font-mono font-bold text-sm h-full flex items-center justify-center select-none shrink-0">
+                          ₹
                         </span>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g. 500"
+                          value={collectForm.cash_tendered || ""}
+                          onChange={(e) => setCollectForm({ ...collectForm, cash_tendered: e.target.value })}
+                          className="!border-none !outline-none !shadow-none !h-full !px-3 text-sm font-bold font-mono text-slate-900 bg-transparent w-full"
+                        />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                        Change to Return (₹)
+                      </label>
+                      {(() => {
+                        const changeAmount = Math.max(
+                          0,
+                          (parseFloat(collectForm.cash_tendered) || 0) - (parseFloat(collectForm.amount) || 0)
+                        );
+                        return (
+                          <div
+                            className={`w-full px-3 rounded-lg border text-sm font-bold font-mono flex items-center justify-between transition ${
+                              changeAmount > 0
+                                ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                : "bg-slate-50 border-slate-200 text-slate-500"
+                            }`}
+                            style={{ height: "40px" }}
+                          >
+                            <span className="text-xs font-medium font-sans">
+                              {changeAmount > 0 ? "Return:" : "Change:"}
+                            </span>
+                            <span className={`text-sm font-bold font-mono ${changeAmount > 0 ? "text-emerald-700" : "text-slate-700"}`}>
+                              ₹{changeAmount.toLocaleString()}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 ) : (
                   <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
+                    <label className="text-xs font-semibold text-slate-700 block mb-1.5">
                       Transaction / UTR Reference (Optional)
                     </label>
                     <input
@@ -3487,13 +3907,14 @@ export default function LaboratoryView() {
                       placeholder="e.g. GPay / PhonePe UTR / Auth Code"
                       value={collectForm.transaction_ref || ""}
                       onChange={(e) => setCollectForm({ ...collectForm, transaction_ref: e.target.value })}
-                      className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] focus:ring-1 focus:ring-[#254d90] outline-none transition"
+                      style={{ height: "38px" }}
                     />
                   </div>
                 )}
               </div>
 
-              <div className="modal-footer flex items-center justify-between">
+              <div className="modal-footer flex items-center justify-between" style={{ padding: "14px 20px" }}>
                 {(collectTargetOrder.invoice?.amount_paid > 0 || collectTargetOrder.invoice?.payment_status === "PAID") ? (
                   <button
                     type="button"
@@ -3511,6 +3932,7 @@ export default function LaboratoryView() {
                     type="button"
                     onClick={() => setIsCollectModalOpen(false)}
                     className="btn-cancel"
+                    style={{ padding: "8px 16px", fontSize: "12.5px" }}
                   >
                     Cancel
                   </button>
@@ -3518,7 +3940,7 @@ export default function LaboratoryView() {
                     type="submit"
                     disabled={collecting}
                     className="btn-submit"
-                    style={{ background: "#254d90" }}
+                    style={{ background: "#254d90", padding: "8px 18px", fontSize: "12.5px" }}
                   >
                     <FiCheckCircle size={14} />
                     <span>{collecting ? "Processing..." : `Confirm Payment (₹${collectForm.amount})`}</span>
@@ -3639,82 +4061,140 @@ export default function LaboratoryView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "600px" }}
+            style={{ maxWidth: "620px", maxHeight: "94vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-header">
+            {/* Header */}
+            <div className="modal-header" style={{ padding: "16px 20px" }}>
               <div>
-                <h2>Diagnostic Receipt &amp; Invoice</h2>
-                <div className="modal-kicker">{selectedReceipt.invoice_number}</div>
+                <div className="flex items-center gap-2.5 flex-wrap">
+                  <h2 className="text-base font-extrabold text-slate-900 tracking-tight flex items-center gap-2">
+                    <span className="w-6 h-6 rounded-full bg-emerald-100 text-emerald-800 flex items-center justify-center shrink-0">
+                      <FaRupeeSign size={12} />
+                    </span>
+                    <span>Diagnostic Receipt &amp; Invoice</span>
+                  </h2>
+                  <span className="font-mono text-xs font-bold text-[#254d90] bg-[#254d90]/10 border border-[#254d90]/20 px-2 py-0.5 rounded">
+                    {selectedReceipt.invoice_number}
+                  </span>
+                  <span
+                    className={`inline-flex items-center gap-1 font-bold text-xs px-2.5 py-0.5 rounded-full ${
+                      selectedReceipt.payment_status === "PAID"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        : "bg-amber-50 text-amber-800 border border-amber-200"
+                    }`}
+                  >
+                    <span className={`w-1.5 h-1.5 rounded-full ${selectedReceipt.payment_status === "PAID" ? "bg-emerald-500" : "bg-amber-500"}`} />
+                    <span>{selectedReceipt.payment_status === "PAID" ? "Paid" : "Unpaid"}</span>
+                    {selectedReceipt.payment_method && (
+                      <span className="text-[11px] font-normal opacity-80">({selectedReceipt.payment_method})</span>
+                    )}
+                  </span>
+                </div>
+                <div className="text-xs text-slate-500 font-medium mt-1">
+                  Official Patient Copy &amp; Diagnostic Examination Billing Summary
+                </div>
               </div>
               <button
                 type="button"
                 className="modal-close"
                 onClick={() => setSelectedReceipt(null)}
+                title="Close"
               >
                 <FiX size={18} />
               </button>
             </div>
 
-            <div id="printable-receipt" className="modal-body printable-receipt space-y-4">
-              {/* Receipt Header Banner */}
-              <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex items-center justify-between text-xs">
-                <div>
-                  <div className="font-extrabold text-sm text-slate-900">{clinicSettings?.clinic_name || "Aerostate Speciality Clinic"}</div>
-                  <div className="text-[11px] text-slate-500">{clinicSettings?.clinic_tagline || "Laboratory & Diagnostics Department"}</div>
-                  {clinicSettings?.clinic_address && (
-                    <div className="text-[10px] text-slate-400 mt-0.5">{clinicSettings.clinic_address} • Phone: {clinicSettings.clinic_phone || ""}</div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="font-mono font-bold text-slate-800">{selectedReceipt.invoice_number}</div>
-                  <div className={`font-bold text-[11px] ${selectedReceipt.payment_status === "PAID" ? "text-emerald-700" : "text-amber-700"}`}>
-                    {selectedReceipt.payment_status} ({selectedReceipt.payment_method || "Cash"})
+            {/* Printable Receipt Body */}
+            <div id="printable-receipt" className="modal-body printable-receipt space-y-3.5" style={{ padding: "16px 20px" }}>
+              {/* Receipt Header Banner / Clinic Letterhead */}
+              <div className="p-4 bg-white border border-slate-200 rounded-xl space-y-2 shadow-2xs">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div>
+                    <h3 className="font-extrabold text-base text-slate-900 m-0">
+                      {clinicSettings?.clinic_name || "Aerostate Speciality Clinic"}
+                    </h3>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5 mb-1">
+                      {clinicSettings?.clinic_tagline || "Advanced Multi-Specialty Dental & Medical Care"}
+                    </p>
+                    <div className="text-[11px] text-slate-400 leading-relaxed">
+                      {clinicSettings?.clinic_address || "Plot 14, Fatehabad Road, Tajganj, Agra (U.P.) - 282001"}
+                      {clinicSettings?.clinic_phone && ` • Phone: ${clinicSettings.clinic_phone}`}
+                    </div>
+                  </div>
+                  <div className="text-right flex flex-col sm:items-end">
+                    <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">Invoice Number</span>
+                    <span className="font-mono font-bold text-sm text-slate-900 mt-0.5">
+                      {selectedReceipt.invoice_number}
+                    </span>
+                    <span className={`inline-flex items-center gap-1 font-bold text-[11px] px-2 py-0.5 rounded-full mt-1.5 ${
+                      selectedReceipt.payment_status === "PAID"
+                        ? "bg-emerald-50 text-emerald-800 border border-emerald-200"
+                        : "bg-amber-50 text-amber-800 border border-amber-200"
+                    }`}>
+                      {selectedReceipt.payment_status === "PAID" ? "PAID" : "UNPAID"}
+                      {selectedReceipt.payment_method && ` (${selectedReceipt.payment_method})`}
+                    </span>
                   </div>
                 </div>
               </div>
 
-              {/* Patient info */}
-              <div className="grid grid-cols-2 gap-3 p-3 bg-white border border-slate-200 rounded-lg text-xs">
+              {/* Patient info cardlet */}
+              <div className="p-3.5 bg-slate-50/80 border border-slate-200 rounded-xl grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div>
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Patient Details</span>
-                  <strong className="text-slate-900 text-sm block">{selectedReceipt.patient_name || "Valued Patient"}</strong>
-                  <span className="text-slate-500 font-mono">{selectedReceipt.patient_phone || "—"}</span>
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Billed To (Patient)</span>
+                  <div className="font-bold text-sm text-slate-900 mt-0.5">
+                    {selectedReceipt.patient?.name || selectedReceipt.patient_name || collectTargetOrder?.patient_name || "Valued Patient"}
+                  </div>
+                  {(selectedReceipt.patient?.phone || selectedReceipt.patient_phone || collectTargetOrder?.patient_phone) && (
+                    <div className="text-slate-600 font-mono text-xs mt-0.5 flex items-center gap-1">
+                      <FiPhone size={11} className="text-[#126868]" />
+                      <span>{(selectedReceipt.patient?.phone || selectedReceipt.patient_phone || collectTargetOrder?.patient_phone || "").replace(/^\+?91/, "")}</span>
+                    </div>
+                  )}
                 </div>
-                <div className="text-right">
-                  <span className="text-[10px] text-slate-400 uppercase font-semibold block">Date &amp; Time</span>
-                  <div className="font-medium text-slate-700">{selectedReceipt.created_date_display || new Date().toLocaleDateString("en-IN")}</div>
+                <div className="sm:text-right flex flex-col sm:items-end justify-center">
+                  <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider block">Date &amp; Time</span>
+                  <div className="font-semibold text-slate-800 text-xs mt-0.5 flex items-center gap-1 sm:justify-end">
+                    <FiCalendar size={11} className="text-slate-400" />
+                    <span>{selectedReceipt.created_date_display || (selectedReceipt.payments?.[0]?.date) || new Date().toLocaleDateString("en-IN", { day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                  {selectedReceipt.order_uid && (
+                    <div className="text-[11px] text-slate-500 font-mono mt-1">
+                      Lab Order: <strong className="text-[#126868]">{selectedReceipt.order_uid}</strong>
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Diagnostics Tests Table */}
-              <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-semibold text-[11px]">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px]">
                     <tr>
-                      <th className="p-2.5">INVESTIGATION / TEST</th>
-                      <th className="p-2.5 text-center">QTY</th>
-                      <th className="p-2.5 text-right">RATE</th>
-                      <th className="p-2.5 text-right">TOTAL</th>
+                      <th className="py-2.5 px-3">INVESTIGATION / TEST</th>
+                      <th className="py-2.5 px-3 text-center">QTY</th>
+                      <th className="py-2.5 px-3 text-right">RATE</th>
+                      <th className="py-2.5 px-3 text-right">TOTAL</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 bg-white">
                     {Array.isArray(selectedReceipt.items) && selectedReceipt.items.length > 0 ? (
                       selectedReceipt.items.map((it, idx) => (
-                        <tr key={idx}>
-                          <td className="p-2.5 font-medium text-slate-800">
+                        <tr key={idx} className="hover:bg-slate-50/50 transition">
+                          <td className="py-2.5 px-3 font-semibold text-slate-900">
                             {it.name || it.test_name || `Diagnostic Test #${idx + 1}`}
                           </td>
-                          <td className="p-2.5 text-center font-mono">{it.quantity || 1}</td>
-                          <td className="p-2.5 text-right font-mono">₹{(it.unit_price || it.price || 0).toLocaleString()}</td>
-                          <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                          <td className="py-2.5 px-3 text-center font-mono text-slate-700">{it.quantity || 1}</td>
+                          <td className="py-2.5 px-3 text-right font-mono text-slate-700">₹{(it.unit_price || it.price || 0).toLocaleString()}</td>
+                          <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                             ₹{(it.total || (it.quantity || 1) * (it.unit_price || it.price || 0)).toLocaleString()}
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={4} className="p-2.5 text-center text-slate-400">Diagnostic Investigations</td>
+                        <td colSpan={4} className="py-3 px-3 text-center text-slate-400 italic">Diagnostic Investigations</td>
                       </tr>
                     )}
                   </tbody>
@@ -3722,66 +4202,69 @@ export default function LaboratoryView() {
               </div>
 
               {/* Totals Summary */}
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-1.5 text-xs">
+              <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200 space-y-2 text-xs">
                 <div className="flex justify-between text-slate-600">
                   <span>Subtotal:</span>
-                  <span className="font-mono">₹{(selectedReceipt.subtotal || selectedReceipt.total || 0).toLocaleString()}</span>
+                  <span className="font-mono font-semibold">₹{(selectedReceipt.subtotal || selectedReceipt.total || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-sm font-bold text-slate-900 pt-1.5 border-t border-slate-200">
+                <div className="flex justify-between text-sm font-bold text-slate-900 pt-2 border-t border-slate-200">
                   <span>Total Charges:</span>
                   <span className="font-mono text-base text-[#254d90]">₹{(selectedReceipt.total || 0).toLocaleString()}</span>
                 </div>
-                <div className="flex justify-between text-slate-700 font-medium pt-1">
+                <div className="flex justify-between text-slate-700 font-semibold pt-1">
                   <span>Amount Paid:</span>
                   <span className="font-mono font-bold text-emerald-700">₹{(selectedReceipt.amount_paid || 0).toLocaleString()}</span>
                 </div>
                 {selectedReceipt.balance_due > 0 && (
-                  <div className="flex justify-between text-amber-800 font-bold">
+                  <div className="flex justify-between text-amber-800 font-bold pt-1 border-t border-amber-200/60">
                     <span>Balance Due:</span>
-                    <span className="font-mono">₹{(selectedReceipt.balance_due || 0).toLocaleString()}</span>
+                    <span className="font-mono font-bold text-sm">₹{(selectedReceipt.balance_due || 0).toLocaleString()}</span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="modal-footer flex items-center justify-end gap-2 bg-slate-50 p-3 rounded-b-xl border-t border-slate-200 no-print">
-              <button
-                type="button"
-                onClick={() => handleSendReceiptWhatsApp(selectedReceipt.id)}
-                disabled={sendingReceiptWhatsApp}
-                className="h-9 px-3.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                title="Send receipt to patient via WhatsApp"
-              >
-                <FiSend size={13} />
-                <span>{sendingReceiptWhatsApp ? "Sending..." : "WhatsApp"}</span>
-              </button>
+            {/* Modal Footer / Actions */}
+            <div className="modal-footer flex items-center justify-between bg-slate-50 p-3.5 rounded-b-xl border-t border-slate-200 no-print flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => handleSendReceiptWhatsApp(selectedReceipt.id)}
+                  disabled={sendingReceiptWhatsApp}
+                  className="h-9 px-3.5 rounded-lg text-xs font-bold bg-emerald-600 hover:bg-emerald-700 text-white inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Send receipt to patient via WhatsApp"
+                >
+                  <FiSend size={13} />
+                  <span>{sendingReceiptWhatsApp ? "Sending..." : "WhatsApp"}</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handlePrintPdf(selectedReceipt)}
-                disabled={printingPdf}
-                className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                title="Print Receipt"
-              >
-                <FiPrinter size={13} />
-                <span>{printingPdf ? "Loading..." : "Print"}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintPdf(selectedReceipt)}
+                  disabled={printingPdf}
+                  className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Print Receipt"
+                >
+                  <FiPrinter size={13} />
+                  <span>{printingPdf ? "Loading..." : "Print"}</span>
+                </button>
 
-              <button
-                type="button"
-                onClick={() => handleDownloadPdf(selectedReceipt)}
-                disabled={downloadingPdf}
-                className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 inline-flex items-center gap-1.5 transition cursor-pointer shadow-2xs disabled:opacity-50"
-                title="Download PDF Document"
-              >
-                <FiDownload size={13} />
-                <span>{downloadingPdf ? "Downloading..." : "Download"}</span>
-              </button>
+                <button
+                  type="button"
+                  onClick={() => handleDownloadPdf(selectedReceipt)}
+                  disabled={downloadingPdf}
+                  className="h-9 px-3.5 rounded-lg text-xs font-semibold bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 inline-flex items-center gap-1.5 transition cursor-pointer shadow-xs disabled:opacity-50"
+                  title="Download PDF Document"
+                >
+                  <FiDownload size={13} />
+                  <span>{downloadingPdf ? "Downloading..." : "Download"}</span>
+                </button>
+              </div>
 
               <button
                 type="button"
                 onClick={() => setSelectedReceipt(null)}
-                className="h-9 px-4 rounded-lg text-xs font-semibold bg-slate-200/80 hover:bg-slate-300 text-slate-700 transition cursor-pointer border border-slate-300"
+                className="btn-cancel !h-9 !px-4 !text-xs font-semibold"
               >
                 Close
               </button>
@@ -3789,6 +4272,7 @@ export default function LaboratoryView() {
           </div>
         </div>
       )}
+
     </div>
   );
 }

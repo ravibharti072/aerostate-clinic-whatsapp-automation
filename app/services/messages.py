@@ -259,7 +259,9 @@ class MessageService:
         clean_text = text.strip()
 
         # Send via WhatsApp client
-        await whatsapp_client.send_text(to=clean_phone, text=clean_text)
+        res = await whatsapp_client.send_text(to=clean_phone, text=clean_text)
+        is_queued = bool(res and res.get("status") == "queued_offline")
+        body_to_log = f"[Queued Offline] {clean_text}" if is_queued else clean_text
 
         # Retrieve patient name if known
         patient = db.query(Patient).filter(Patient.phone == clean_phone).first()
@@ -270,7 +272,7 @@ class MessageService:
             db=db,
             phone=clean_phone,
             sender="clinic",
-            body=clean_text,
+            body=body_to_log,
             patient_name=patient_name,
             message_type="text",
         )
@@ -281,6 +283,8 @@ class MessageService:
             "sender": "clinic",
             "body": logged.body,
             "created_at": logged.created_at.isoformat(),
+            "queued_offline": is_queued,
+            "status": "queued_offline" if is_queued else "sent",
         }
 
 

@@ -25,6 +25,7 @@ export default function Sidebar({
   isOpen,
   onClose,
   clinicName = "Aerostate Clinic",
+  clinicInfo,
   user,
   onLogout,
 }) {
@@ -209,7 +210,7 @@ export default function Sidebar({
             <div>
               <div className="rs-brand-header">
                 <span className="rs-brand-name">AeroState</span>
-                <span className="rs-version-badge">v1.0.0</span>
+                <span className="rs-version-badge">v2.2.5</span>
               </div>
               <p className="rs-brand-sub">{getPortalTitle()}</p>
             </div>

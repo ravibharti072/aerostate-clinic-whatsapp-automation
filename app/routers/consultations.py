@@ -6,10 +6,10 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.security import require_admin
+from app.security import require_staff
 import app.models as models
 
-router = APIRouter(prefix="/admin/consultations", tags=["Doctor Consultation & Clinical Notes"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/consultations", tags=["Doctor Consultation & Clinical Notes"], dependencies=[Depends(require_staff)])
 
 
 class VitalsModel(BaseModel):
@@ -286,6 +286,8 @@ def list_consultations(
             "patient_phone_display": phone_display,
             "patient_gender": enc.patient.gender if enc.patient else "Unspecified",
             "patient_age": enc.patient.age if enc.patient else None,
+            "patient_abha_number": enc.patient.abha_number if enc.patient else None,
+            "patient_abha_status": enc.patient.abha_status if enc.patient else "UNLINKED",
             "doctor_id": enc.doctor_id,
             "doctor_name": enc.doctor.name if enc.doctor else "Specialist",
             "specialization": enc.doctor.specialization if enc.doctor else "General OPD",
@@ -380,6 +382,9 @@ def get_consultation(encounter_id: int, db: Session = Depends(get_db)):
             "blood_group": patient.blood_group or "-",
             "allergies": allergies,
             "chronic_conditions": chronic,
+            "abha_number": patient.abha_number or "-",
+            "abha_address": patient.abha_address or "-",
+            "abha_status": patient.abha_status or "UNLINKED",
         },
         "doctor": {
             "id": enc.doctor.id if enc.doctor else None,

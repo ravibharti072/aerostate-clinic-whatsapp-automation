@@ -20,7 +20,12 @@ import {
   FiRefreshCw,
   FiCheck,
   FiChevronLeft,
-  FiChevronRight
+  FiChevronRight,
+  FiList,
+  FiGrid,
+  FiPhone,
+  FiCalendar,
+  FiUser
 } from "react-icons/fi";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
@@ -59,15 +64,37 @@ export default function BillingView() {
   // Pagination (20 entries per page default from LRS)
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(20);
+  const [desktopViewMode, setDesktopViewMode] = useState("table");
+
+  // Sub-Section Tabs: 'pending' (Unpaid), 'complete' (Paid), 'all' (Matching LaboratoryView)
+  const [billingTab, setBillingTab] = useState("pending");
+
+  const pendingInvoices = useMemo(() => {
+    return invoices.filter(
+      (inv) => inv.payment_status === "PENDING" || (inv.balance_due && inv.balance_due > 0)
+    );
+  }, [invoices]);
+
+  const completedInvoices = useMemo(() => {
+    return invoices.filter(
+      (inv) => inv.payment_status === "PAID" && (!inv.balance_due || inv.balance_due === 0)
+    );
+  }, [invoices]);
+
+  const currentTabInvoices = useMemo(() => {
+    if (billingTab === "pending") return pendingInvoices;
+    if (billingTab === "complete") return completedInvoices;
+    return invoices;
+  }, [billingTab, pendingInvoices, completedInvoices, invoices]);
 
   const sortedInvoices = useMemo(() => {
-    return [...invoices].sort((a, b) => {
+    return [...currentTabInvoices].sort((a, b) => {
       const timeA = new Date(a.latest_activity || a.created_at || 0).getTime();
       const timeB = new Date(b.latest_activity || b.created_at || 0).getTime();
       if (timeB !== timeA) return timeB - timeA;
       return (b.id || 0) - (a.id || 0);
     });
-  }, [invoices]);
+  }, [currentTabInvoices]);
 
   const paginatedInvoices = useMemo(() => {
     if (pageSize === "all") return sortedInvoices;
@@ -498,8 +525,9 @@ export default function BillingView() {
         kicker="Financial Management"
         title="Billing, Invoicing & Payments"
         icon={FiDollarSign}
+        actionsBelowOnMobile={true}
         rightAction={
-          <div className="flex items-center gap-3">
+          <div className="lead-header-actions flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={loadData}
@@ -514,10 +542,11 @@ export default function BillingView() {
                 setFormError("");
                 setIsCreateOpen(true);
               }}
-              className="portal-action-btn flex items-center gap-2"
+              className="portal-action-btn flex items-center justify-center gap-2 flex-1 sm:flex-initial"
             >
               <FiPlus size={16} />
-              <span>Generate Invoice</span>
+              <span className="hidden sm:inline">Generate Invoice</span>
+              <span className="inline sm:hidden">New Invoice</span>
             </button>
           </div>
         }
@@ -558,11 +587,76 @@ export default function BillingView() {
       {/* Standard LRS Module Roster Section */}
       <section className="dir-modules-section">
         <ModuleWriternHeader
-          title="Invoices & Payments"
-          description="Track OPD fees, digital receipts, pending dues, and WhatsApp invoice transmissions."
-          badgeCount={invoices.length}
-          badgeLabel="invoices"
+          title={
+            billingTab === "pending"
+              ? "Pending Invoices & Unpaid Dues"
+              : billingTab === "complete"
+              ? "Completed & Paid Invoices"
+              : "Invoices & Payments History"
+          }
+          description={
+            billingTab === "pending"
+              ? "Track unpaid clinical invoices, pending patient dues, and collect payments."
+              : billingTab === "complete"
+              ? "Access settled patient invoices, digital payment receipts, and collection history."
+              : "Track OPD fees, digital receipts, pending dues, and WhatsApp invoice transmissions."
+          }
+          badgeCount={
+            billingTab === "pending"
+              ? pendingInvoices.length
+              : billingTab === "complete"
+              ? completedInvoices.length
+              : invoices.length
+          }
+          badgeLabel={
+            billingTab === "pending"
+              ? "unpaid invoices"
+              : billingTab === "complete"
+              ? "settled invoices"
+              : "invoices"
+          }
+          subBadge={
+            billingTab === "pending"
+              ? `${pendingInvoices.length} Pending Actions`
+              : billingTab === "complete"
+              ? `${completedInvoices.length} Settled Invoices`
+              : "Full Billing Ledger"
+          }
         />
+
+        {/* TABS NAVIGATION (Matching Laboratory Pending / Complete pattern) */}
+        <div className="wa-tabs-container">
+          <button
+            type="button"
+            className={`wa-tab-btn ${billingTab === "pending" ? "active" : ""}`}
+            onClick={() => {
+              setBillingTab("pending");
+              setCurrentPage(1);
+            }}
+          >
+            <span>Pending ({pendingInvoices.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`wa-tab-btn ${billingTab === "complete" ? "active" : ""}`}
+            onClick={() => {
+              setBillingTab("complete");
+              setCurrentPage(1);
+            }}
+          >
+            <span>Complete ({completedInvoices.length})</span>
+          </button>
+          <button
+            type="button"
+            className={`wa-tab-btn ${billingTab === "all" ? "active" : ""}`}
+            onClick={() => {
+              setBillingTab("all");
+              setCurrentPage(1);
+            }}
+          >
+            <span>All Invoices ({invoices.length})</span>
+          </button>
+        </div>
 
         {/* CONTROLS & TOOLBAR */}
         <div className="dir-controls">
@@ -578,28 +672,32 @@ export default function BillingView() {
           />
 
           <div className="dir-filter-group flex items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => {
-                setStatusFilter(e.target.value);
-              }}
-              className="dir-select"
-              style={{ height: "34px", fontSize: "12.5px", padding: "0 8px" }}
-            >
-              <option value="">All Payment Statuses</option>
-              {(billingOptions?.payment_statuses || ["PAID", "PENDING", "REFUNDED", "CANCELLED"])
-                .filter((st) => st !== "ALL")
-                .map((st) => (
-                  <option key={st} value={st}>
-                    {st} Only
-                  </option>
-                ))}
-            </select>
+            {billingTab === "all" && (
+              <select
+                value={statusFilter}
+                onChange={(e) => {
+                  setStatusFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="dir-select"
+                style={{ height: "34px", fontSize: "12.5px", padding: "0 8px" }}
+              >
+                <option value="">All Payment Statuses</option>
+                {(billingOptions?.payment_statuses || ["PAID", "PENDING", "REFUNDED", "CANCELLED"])
+                  .filter((st) => st !== "ALL")
+                  .map((st) => (
+                    <option key={st} value={st}>
+                      {st} Only
+                    </option>
+                  ))}
+              </select>
+            )}
 
             <select
               value={paymentMethodFilter}
               onChange={(e) => {
                 setPaymentMethodFilter(e.target.value);
+                setCurrentPage(1);
               }}
               className="dir-select"
               style={{ height: "34px", fontSize: "12.5px", padding: "0 8px" }}
@@ -614,16 +712,37 @@ export default function BillingView() {
                 ))}
             </select>
 
-            <button
-              type="button"
-              onClick={handleSearchSubmit}
-              className="btn-submit"
-              style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
-            >
-              Search
-            </button>
+            {/* Desktop View Switcher */}
+            <div className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-lg border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("table")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  desktopViewMode === "table"
+                    ? "bg-white text-[#254d90] shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="List View"
+              >
+                <FiList size={14} />
+                <span>List View</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDesktopViewMode("cards")}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                  desktopViewMode === "cards"
+                    ? "bg-white text-[#254d90] shadow-sm"
+                    : "text-slate-600 hover:text-slate-900"
+                }`}
+                title="Cards View"
+              >
+                <FiGrid size={14} />
+                <span>Cards View</span>
+              </button>
+            </div>
 
-            {(search || statusFilter || paymentMethodFilter) && (
+            {(search || (billingTab === "all" && statusFilter) || paymentMethodFilter) && (
               <button
                 type="button"
                 onClick={handleClearFilters}
@@ -641,28 +760,41 @@ export default function BillingView() {
           <div className="flex items-center justify-center py-20 bg-white rounded-xl border border-slate-200">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#254d90]"></div>
           </div>
-        ) : invoices.length === 0 ? (
+        ) : sortedInvoices.length === 0 ? (
           <div className="text-center py-20 px-4 bg-white rounded-xl border border-slate-200">
             <FiDollarSign className="w-10 h-10 mx-auto text-slate-300 mb-3" />
-            <h3 className="text-sm font-bold text-slate-800">No invoices generated yet</h3>
+            <h3 className="text-sm font-bold text-slate-800">
+              {billingTab === "pending"
+                ? "No pending unpaid invoices"
+                : billingTab === "complete"
+                ? "No completed paid invoices"
+                : "No invoices generated yet"}
+            </h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Create and dispatch digital invoices for consultations and procedures.
+              {billingTab === "pending"
+                ? "All patient invoices are fully settled and cleared."
+                : "Create and dispatch digital invoices for consultations and procedures."}
             </p>
-            <button
-              onClick={() => setIsCreateOpen(true)}
-              className="mt-4 portal-action-btn portal-action-btn-blue inline-flex items-center gap-1.5"
-            >
-              <FiPlus size={15} />
-              <span>Create First Invoice</span>
-            </button>
+            {billingTab !== "pending" && (
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="mt-4 portal-action-btn portal-action-btn-blue inline-flex items-center gap-1.5"
+              >
+                <FiPlus size={15} />
+                <span>Create First Invoice</span>
+              </button>
+            )}
           </div>
         ) : (
-          <div className="dir-table-wrapper">
+          <>
+            {/* Desktop Table View */}
+            {desktopViewMode === "table" && (
+              <div className="dir-table-wrapper billing-desktop-table hidden md:flex flex-col">
             <div className="dir-scroll-bar-header">
               <span className="dir-scroll-hint">⇄ Master Billing & Invoices (Scroll horizontally to view all columns)</span>
               <div className="flex items-center gap-3">
                 <span className="text-xs font-semibold text-slate-500">
-                  Showing {invoices.length} invoice record{invoices.length === 1 ? "" : "s"}
+                  Showing {sortedInvoices.length} {billingTab === "pending" ? "unpaid / pending" : billingTab === "complete" ? "settled / paid" : ""} invoice record{sortedInvoices.length === 1 ? "" : "s"}
                 </span>
                 <div className="dir-scroll-actions">
                   <button
@@ -886,7 +1018,7 @@ export default function BillingView() {
 
           <Pagination
             currentPage={currentPage}
-            totalItems={invoices.length}
+            totalItems={sortedInvoices.length}
             pageSize={pageSize}
             onPageChange={(p) => setCurrentPage(p)}
             onPageSizeChange={(sz) => {
@@ -904,6 +1036,189 @@ export default function BillingView() {
           </div>
         </div>
       )}
+
+      {/* Invoices Mobile & Cards View */}
+      <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full space-y-3`}>
+        <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1 py-1">
+          <span>Showing {paginatedInvoices.length} of {invoices.length} invoices</span>
+          {statusFilter && (
+            <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-bold">
+              Status: {statusFilter}
+            </span>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+          {paginatedInvoices.map((inv) => (
+            <div
+              key={inv.id}
+              className="bg-white rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-3.5 flex flex-col justify-between gap-3 text-slate-800"
+            >
+              {/* Top: Invoice #, Date, Status */}
+              <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                <div>
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <span className="font-mono font-bold text-xs text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded">
+                      {inv.invoice_number}
+                    </span>
+                    <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded">
+                      {inv.payment_method}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1 font-mono">
+                    <FiCalendar size={11} className="text-slate-400 shrink-0" />
+                    <span>{inv.created_date_display}</span>
+                  </div>
+                </div>
+
+                <div className="text-right">
+                  <button
+                    type="button"
+                    onClick={() => handleToggleStatus(inv.id, inv.payment_status)}
+                    disabled={updatingId === inv.id}
+                    title="Click to toggle Paid/Pending"
+                    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border transition text-[10.5px] ${
+                      inv.payment_status === "PAID"
+                        ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                        : "bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100"
+                    }`}
+                  >
+                    {inv.payment_status === "PAID" ? <FiCheckCircle size={10} /> : <FiClock size={10} />}
+                    <span>{inv.payment_status}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Patient Details & Financials */}
+              <div className="space-y-1.5 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-slate-900 text-sm truncate" title={inv.patient_name}>
+                    {inv.patient_name}
+                  </span>
+                  {inv.patient_phone && (
+                    <a
+                      href={`tel:${inv.patient_phone}`}
+                      className="inline-flex items-center gap-1 text-[11px] font-mono text-[#254d90] hover:text-[#1e3f78] bg-blue-50/60 hover:bg-blue-50 px-2 py-0.5 rounded transition shrink-0 ml-2"
+                    >
+                      <FiPhone size={10} />
+                      <span>{inv.patient_phone}</span>
+                    </a>
+                  )}
+                </div>
+
+                {/* Amount Details Box */}
+                <div className="bg-slate-50 border border-slate-100 rounded-lg p-2.5 space-y-1">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-slate-600 font-semibold">Net Total:</span>
+                    <span className="font-mono font-bold text-slate-900 text-base">
+                      ₹{inv.total.toLocaleString()}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-[11px] text-slate-500 pt-0.5 border-t border-slate-200/60">
+                    <span>Gross: ₹{(inv.subtotal || inv.total).toLocaleString()}</span>
+                    {inv.discount > 0 ? (
+                      <span className="text-emerald-700 font-medium">Discount: -₹{inv.discount.toLocaleString()}</span>
+                    ) : (
+                      <span>No discount</span>
+                    )}
+                  </div>
+                  {inv.balance_due != null && inv.balance_due > 0 && (
+                    <div className="text-right text-[11px] font-bold text-rose-700">
+                      Balance Due: ₹{inv.balance_due.toLocaleString()}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                {inv.payment_status !== "PAID" || (inv.balance_due && inv.balance_due > 0) ? (
+                  <button
+                    type="button"
+                    title="Collect Outstanding Balance"
+                    onClick={() => handleOpenPayModal(inv)}
+                    className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-700 text-white hover:bg-emerald-800 shadow-xs transition"
+                  >
+                    <FiDollarSign size={12} />
+                    <span>Collect {inv.balance_due ? `₹${inv.balance_due}` : `₹${inv.total}`}</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    title="Collect Additional / Settlement Payment"
+                    onClick={() => handleOpenPayModal(inv)}
+                    className="flex-1 min-w-[110px] inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 shadow-xs transition"
+                  >
+                    <FiDollarSign size={12} className="text-emerald-600" />
+                    <span>+ Collect</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  title="View Itemized Bill & Transaction History"
+                  onClick={() => handleOpenInvoiceDetails(inv)}
+                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition"
+                >
+                  <FiEye size={12} className="text-[#254d90]" />
+                  <span>View</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Print Official PDF Receipt"
+                  onClick={() => handlePrintPdf(inv)}
+                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-xs transition"
+                >
+                  <FiPrinter size={12} className="text-slate-500" />
+                  <span>Receipt</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Send Official Receipt to Patient on WhatsApp"
+                  disabled={sendingWhatsappId === inv.id}
+                  onClick={() => handleSendWhatsApp(inv.id)}
+                  className="inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-xs transition disabled:opacity-50"
+                >
+                  <FaWhatsapp size={13} className="text-emerald-600" />
+                  <span>{sendingWhatsappId === inv.id ? "Sending..." : "WhatsApp"}</span>
+                </button>
+
+                <button
+                  type="button"
+                  title="Process Authorized Refund"
+                  onClick={() => {
+                    setRefundTargetInv(inv);
+                    setRefundForm({ amount: inv.amount_paid || inv.total, reason: "Patient Request" });
+                    setIsRefundOpen(true);
+                  }}
+                  className="inline-flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium rounded-lg bg-white hover:bg-rose-50 text-slate-600 hover:text-rose-700 border border-slate-200 hover:border-rose-200 shadow-xs transition"
+                >
+                  <FiCreditCard size={11} className="text-rose-500" />
+                  <span>Refund</span>
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Mobile Pagination */}
+        <Pagination
+          currentPage={currentPage}
+          totalItems={sortedInvoices.length}
+          pageSize={pageSize}
+          onPageChange={(p) => setCurrentPage(p)}
+          onPageSizeChange={(sz) => {
+            setPageSize(sz);
+            setCurrentPage(1);
+          }}
+          pageSizeOptions={[10, 20, 50, 100]}
+          itemLabel="invoices"
+        />
+      </div>
+    </>
+  )}
     </section>
 
       {/* CREATE INVOICE MODAL */}
@@ -995,45 +1310,66 @@ export default function BillingView() {
                     </div>
                   </div>
 
+                  {/* Column Header Labels */}
+                  <div className="flex items-center gap-2 px-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <span className="flex-1">Service / Item Description</span>
+                    <span style={{ width: "70px", textAlign: "center", flexShrink: 0 }}>Qty</span>
+                    <span style={{ width: "110px", textAlign: "left", paddingLeft: "10px", flexShrink: 0 }}>Price (₹)</span>
+                    {formData.items.length > 1 && <span style={{ width: "28px", flexShrink: 0 }} />}
+                  </div>
+
                   {formData.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 rounded-lg bg-slate-50 border border-slate-200">
-                      <input
-                        type="text"
-                        required
-                        placeholder="Service (e.g. Dental Scaling / Consultation)"
-                        value={item.description}
-                        onChange={(e) => handleItemChange(idx, "description", e.target.value)}
-                        className="flex-1 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-medium"
-                        style={{ height: "36px" }}
-                      />
-                      <input
-                        type="number"
-                        min="1"
-                        placeholder="Qty"
-                        value={item.quantity}
-                        onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
-                        className="w-16 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-center"
-                        style={{ height: "36px" }}
-                      />
-                      <div className="flex items-center gap-1">
-                        <span className="text-xs text-slate-400">₹</span>
+                    <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
+                      {/* 1. Service Description (Flex-1, Takes Full Remaining Width) */}
+                      <div className="flex-1" style={{ minWidth: 0 }}>
+                        <input
+                          type="text"
+                          required
+                          placeholder="Service (e.g. Dental Scaling / Doctor Consultation)"
+                          value={item.description}
+                          onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                          className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-medium text-slate-900"
+                          style={{ height: "38px", width: "100%" }}
+                        />
+                      </div>
+
+                      {/* 2. Quantity (Fixed Compact Width) */}
+                      <div style={{ width: "70px", minWidth: "70px", maxWidth: "70px", flexShrink: 0 }}>
+                        <input
+                          type="number"
+                          min="1"
+                          placeholder="Qty"
+                          value={item.quantity}
+                          onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-center font-bold text-slate-800"
+                          style={{ height: "38px", width: "100%" }}
+                          title="Quantity"
+                        />
+                      </div>
+
+                      {/* 3. Unit Price (Fixed Compact Width with currency indicator) */}
+                      <div style={{ width: "110px", minWidth: "110px", maxWidth: "110px", flexShrink: 0 }} className="relative flex items-center">
+                        <span className="absolute left-2.5 text-xs text-slate-400 font-bold pointer-events-none">₹</span>
                         <input
                           type="number"
                           min="0"
                           placeholder="Price"
                           value={item.unit_price}
                           onChange={(e) => handleItemChange(idx, "unit_price", e.target.value)}
-                          className="w-24 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold"
-                          style={{ height: "36px" }}
+                          className="w-full pl-6 pr-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-slate-900"
+                          style={{ height: "38px", width: "100%" }}
+                          title="Unit Price in Rupees"
                         />
                       </div>
+
                       {formData.items.length > 1 && (
                         <button
                           type="button"
                           onClick={() => handleRemoveItem(idx)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer"
+                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer flex-shrink-0"
+                          title="Remove line item"
                         >
-                          <FiTrash2 size={14} />
+                          <FiTrash2 size={16} />
                         </button>
                       )}
                     </div>

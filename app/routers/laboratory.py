@@ -8,9 +8,9 @@ from app.database import get_db
 from app.config import settings
 import app.models as models
 from app.services.pdf_service import generate_diagnostic_receipt_pdf, generate_invoice_pdf, build_pdf_filename
-from app.security import require_admin
+from app.security import require_admin, require_staff
 
-router = APIRouter(prefix="/admin/laboratory", tags=["Laboratory & Diagnostic Management"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/laboratory", tags=["Laboratory & Diagnostic Management"], dependencies=[Depends(require_staff)])
 
 
 class LabTestCreate(BaseModel):

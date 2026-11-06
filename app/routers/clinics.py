@@ -1,3 +1,4 @@
+import datetime
 from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
@@ -8,6 +9,7 @@ from app.models import Clinic, Doctor, Appointment, User
 from app.security import require_superadmin, require_admin, get_current_user, hash_password
 from app.services.whatsapp import whatsapp_client
 from app.config import settings
+from app.routers.admin import update_env_variable
 
 router = APIRouter(prefix="/api/clinics", tags=["Multi-Clinic Management"])
 
@@ -17,16 +19,21 @@ class ClinicCreateRequest(BaseModel):
     code: Optional[str] = None
     tagline: Optional[str] = None
     address: Optional[str] = None
-    city: Optional[str] = "Agra"
-    state: Optional[str] = "Uttar Pradesh"
+    city: Optional[str] = None
+    state: Optional[str] = None
     phone: Optional[str] = None
     email: Optional[str] = None
-    operating_hours: Optional[str] = "Mon-Sat: 09:00 AM - 08:00 PM"
+    operating_hours: Optional[str] = None
     phone_number_id: Optional[str] = None
     display_phone_number: Optional[str] = None
     whatsapp_token: Optional[str] = None
     verify_token: Optional[str] = None
     is_active: bool = True
+    # SaaS Subscription & Licensing Model
+    subscription_plan: Optional[str] = "Monthly"
+    subscription_expiry: Optional[str] = None
+    subscription_expiry_date: Optional[str] = None
+    subscription_status: Optional[str] = "Active"
     # Initial Primary Admin Credentials created by SuperAdmin
     admin_username: Optional[str] = None
     admin_password: Optional[str] = None
@@ -54,6 +61,63 @@ class ClinicUpdateRequest(BaseModel):
     whatsapp_token: Optional[str] = None
     verify_token: Optional[str] = None
     is_active: Optional[bool] = None
+    # SaaS Subscription & Licensing Model
+    subscription_plan: Optional[str] = None
+    subscription_expiry: Optional[str] = None
+    subscription_expiry_date: Optional[str] = None
+    subscription_status: Optional[str] = None
+
+
+def parse_expiry_date(expiry_str: Optional[str], plan: Optional[str] = "Monthly") -> Optional[datetime.datetime]:
+    if expiry_str and expiry_str.strip():
+        val = expiry_str.strip()
+        try:
+            if len(val) == 10:
+                return datetime.datetime.strptime(val, "%Y-%m-%d")
+            return datetime.datetime.fromisoformat(val.replace("Z", "+00:00")).replace(tzinfo=None)
+        except Exception:
+            pass
+
+    now = datetime.datetime.utcnow()
+    plan_lower = (plan or "monthly").lower()
+    if "quarter" in plan_lower:
+        return now + datetime.timedelta(days=90)
+    elif "annual" in plan_lower or "year" in plan_lower:
+        return now + datetime.timedelta(days=365)
+    elif "semi" in plan_lower:
+        return now + datetime.timedelta(days=180)
+    elif "trial" in plan_lower:
+        return now + datetime.timedelta(days=14)
+    else:
+        return now + datetime.timedelta(days=30)
+
+
+def get_subscription_info(c: Clinic):
+    plan = c.subscription_plan or "Monthly"
+    expiry = c.subscription_expiry
+    status = c.subscription_status or "Active"
+    days_remaining = None
+    is_expired = False
+
+    if expiry:
+        days_remaining = (expiry.date() - datetime.date.today()).days
+        if days_remaining < 0:
+            status = "Expired"
+            is_expired = True
+        elif days_remaining <= 7:
+            status = "Expiring Soon"
+        else:
+            status = "Active"
+
+    return {
+        "subscription_plan": plan,
+        "subscription_expiry": expiry.isoformat() if expiry else None,
+        "subscription_expiry_date": expiry.strftime("%Y-%m-%d") if expiry else "",
+        "subscription_expiry_display": expiry.strftime("%d %b %Y") if expiry else "Not Configured",
+        "subscription_status": status,
+        "days_remaining": days_remaining,
+        "is_expired": is_expired,
+    }
 
 
 def mask_token(token: Optional[str]) -> str:
@@ -132,6 +196,7 @@ def list_clinics(
             "admin_username": admin_user.username if admin_user else None,
             "admin_name": admin_user.name if admin_user else None,
             "admin_id": admin_user.id if admin_user else None,
+            **get_subscription_info(c),
         })
     return result
 
@@ -187,21 +252,27 @@ def create_clinic(
         if existing_user:
             raise HTTPException(status_code=400, detail=f"Username '{admin_clean_user}' is already registered")
 
+    expiry_raw = payload.subscription_expiry or payload.subscription_expiry_date
+    expiry_dt = parse_expiry_date(expiry_raw, payload.subscription_plan)
+
     clinic = Clinic(
         code=code,
         name=clean_name,
         tagline=payload.tagline.strip() if payload.tagline else None,
-        address=payload.address.strip() if payload.address else None,
-        city=payload.city.strip() if payload.city else "Agra",
-        state=payload.state.strip() if payload.state else "Uttar Pradesh",
-        phone=payload.phone.strip() if payload.phone else None,
-        email=payload.email.strip() if payload.email else None,
-        operating_hours=payload.operating_hours.strip() if payload.operating_hours else "Mon-Sat: 09:00 AM - 08:00 PM",
+        address=payload.address.strip() if payload.address and payload.address.strip() else None,
+        city=payload.city.strip() if payload.city and payload.city.strip() else None,
+        state=payload.state.strip() if payload.state and payload.state.strip() else None,
+        phone=payload.phone.strip() if payload.phone and payload.phone.strip() else None,
+        email=payload.email.strip() if payload.email and payload.email.strip() else None,
+        operating_hours=payload.operating_hours.strip() if payload.operating_hours and payload.operating_hours.strip() else None,
         phone_number_id=clean_phone_id,
         display_phone_number=payload.display_phone_number.strip() if payload.display_phone_number else payload.phone,
         whatsapp_token=payload.whatsapp_token.strip() if payload.whatsapp_token and payload.whatsapp_token.strip() else None,
         verify_token=payload.verify_token.strip() if payload.verify_token and payload.verify_token.strip() else None,
         is_active=payload.is_active,
+        subscription_plan=payload.subscription_plan or "Monthly",
+        subscription_expiry=expiry_dt,
+        subscription_status=payload.subscription_status or "Active",
     )
     db.add(clinic)
     db.commit()
@@ -228,6 +299,28 @@ def create_clinic(
             "name": admin_user.name,
         }
 
+    # Synchronize primary clinic info to settings and .env
+    first_clinic = db.query(Clinic).order_by(Clinic.id.asc()).first()
+    if first_clinic and first_clinic.id == clinic.id:
+        if clinic.name:
+            settings.CLINIC_NAME = clinic.name
+            update_env_variable("CLINIC_NAME", clinic.name)
+        if clinic.address:
+            settings.CLINIC_ADDRESS = clinic.address
+            update_env_variable("CLINIC_ADDRESS", clinic.address)
+        if clinic.phone:
+            settings.CLINIC_PHONE = clinic.phone
+            update_env_variable("CLINIC_PHONE", clinic.phone)
+        if clinic.operating_hours:
+            settings.CLINIC_HOURS = clinic.operating_hours
+            update_env_variable("CLINIC_HOURS", clinic.operating_hours)
+        if clinic.phone_number_id:
+            settings.PHONE_NUMBER_ID = clinic.phone_number_id
+            update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id)
+        if clinic.whatsapp_token:
+            settings.WHATSAPP_TOKEN = clinic.whatsapp_token
+            update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
+
     return {
         "success": True,
         "message": f"Clinic '{clinic.name}' created successfully with code {clinic.code}" + (f" and Admin '{admin_clean_user}'" if admin_clean_user else ""),
@@ -243,10 +336,17 @@ def get_clinic_detail(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
-    """Retrieves specific clinic details."""
+    """Retrieves specific clinic details with tenant boundary verification."""
     clinic = db.query(Clinic).filter(Clinic.id == clinic_id).first()
     if not clinic:
         raise HTTPException(status_code=404, detail="Clinic not found")
+
+    # Multi-tenant boundary check: Non-SuperAdmin staff can only access their assigned clinic
+    if (current_user.role or "").lower() != "superadmin" and current_user.clinic_id != clinic.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Access denied: You do not have permission to view records from another clinic.",
+        )
 
     doctors = db.query(Doctor).filter(Doctor.clinic_id == clinic.id, Doctor.is_active == True).all()
 
@@ -284,6 +384,7 @@ def get_clinic_detail(
         "admin_username": admin_user.username if admin_user else None,
         "admin_name": admin_user.name if admin_user else None,
         "admin_id": admin_user.id if admin_user else None,
+        **get_subscription_info(clinic),
         "doctors": [{"id": d.id, "name": d.name, "specialization": d.specialization} for d in doctors],
     }
 
@@ -436,11 +537,45 @@ def update_clinic(
     if payload.verify_token is not None:
         clinic.verify_token = payload.verify_token.strip() if payload.verify_token.strip() else None
 
+    if payload.subscription_plan is not None:
+        clinic.subscription_plan = payload.subscription_plan.strip()
+    
+    expiry_input = payload.subscription_expiry if payload.subscription_expiry is not None else payload.subscription_expiry_date
+    if expiry_input is not None:
+        if expiry_input.strip():
+            clinic.subscription_expiry = parse_expiry_date(expiry_input, clinic.subscription_plan)
+        else:
+            clinic.subscription_expiry = None
+    if payload.subscription_status is not None:
+        clinic.subscription_status = payload.subscription_status.strip()
+
     if payload.is_active is not None:
         clinic.is_active = payload.is_active
 
     db.commit()
     db.refresh(clinic)
+
+    # Synchronize primary clinic info to settings and .env
+    first_clinic = db.query(Clinic).order_by(Clinic.id.asc()).first()
+    if first_clinic and first_clinic.id == clinic.id:
+        if clinic.name:
+            settings.CLINIC_NAME = clinic.name
+            update_env_variable("CLINIC_NAME", clinic.name)
+        if clinic.address:
+            settings.CLINIC_ADDRESS = clinic.address
+            update_env_variable("CLINIC_ADDRESS", clinic.address)
+        if clinic.phone:
+            settings.CLINIC_PHONE = clinic.phone
+            update_env_variable("CLINIC_PHONE", clinic.phone)
+        if clinic.operating_hours:
+            settings.CLINIC_HOURS = clinic.operating_hours
+            update_env_variable("CLINIC_HOURS", clinic.operating_hours)
+        if clinic.phone_number_id is not None:
+            settings.PHONE_NUMBER_ID = clinic.phone_number_id or ""
+            update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id or "")
+        if clinic.whatsapp_token:
+            settings.WHATSAPP_TOKEN = clinic.whatsapp_token
+            update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
 
     return {"success": True, "message": f"Clinic '{clinic.name}' updated successfully"}
 

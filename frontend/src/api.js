@@ -1,6 +1,26 @@
 // API Client for Aerostate Clinic Backend
 
-const BASE_URL = "";
+// Dynamic Base URL support for web & mobile (Capacitor Android)
+let _customBaseUrl = localStorage.getItem("AEROSTATE_API_URL") || (import.meta.env && import.meta.env.VITE_API_BASE_URL) || "";
+
+export function getBaseUrl() {
+  return _customBaseUrl;
+}
+
+export function setApiBaseUrl(url) {
+  _customBaseUrl = (url || "").trim().replace(/\/+$/, "");
+  if (_customBaseUrl) {
+    localStorage.setItem("AEROSTATE_API_URL", _customBaseUrl);
+  } else {
+    localStorage.removeItem("AEROSTATE_API_URL");
+  }
+}
+
+const BASE_URL = {
+  toString() {
+    return _customBaseUrl;
+  }
+};
 
 // ------------------------------------
 // Secure In-Memory Token Management
@@ -1810,6 +1830,272 @@ export async function resetUserPassword(userId, newPassword) {
   if (!res.ok) {
     const err = await res.json().catch(() => ({}));
     throw new Error(err.detail || "Failed to reset password");
+  }
+  return res.json();
+}
+
+
+// ------------------------------------
+// Offline & Cloud Sync APIs
+// ------------------------------------
+
+export async function fetchSyncStatus() {
+  const res = await fetch(`${BASE_URL}/api/sync/status`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch sync status");
+  }
+  return res.json();
+}
+
+export async function triggerManualSync() {
+  const res = await fetch(`${BASE_URL}/api/sync/trigger`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to trigger sync");
+  }
+  return res.json();
+}
+
+export async function fetchSyncOutbox(status = null, limit = 50) {
+  let url = `${BASE_URL}/api/sync/outbox?limit=${limit}`;
+  if (status) url += `&status=${encodeURIComponent(status)}`;
+  const res = await fetch(url, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch outbox items");
+  }
+  return res.json();
+}
+
+export async function retryOutboxItem(queueId) {
+  const res = await fetch(`${BASE_URL}/api/sync/outbox/${queueId}/retry`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to retry message");
+  }
+  return res.json();
+}
+
+export async function deleteOutboxItem(queueId) {
+  const res = await fetch(`${BASE_URL}/api/sync/outbox/${queueId}`, {
+    method: "DELETE",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to delete outbox item");
+  }
+  return res.json();
+}
+
+export async function fetchSyncConfig() {
+  const res = await fetch(`${BASE_URL}/api/sync/config`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch sync config");
+  }
+  return res.json();
+}
+
+export async function updateSyncConfig(payload) {
+  const res = await fetch(`${BASE_URL}/api/sync/config`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to update sync config");
+  }
+  return res.json();
+}
+
+export async function fetchUpdaterStatus() {
+  const res = await fetch(`${BASE_URL}/api/updater/status`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch updater status");
+  }
+  return res.json();
+}
+
+export async function checkForUpdates() {
+  const res = await fetch(`${BASE_URL}/api/updater/check`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to check for updates");
+  }
+  return res.json();
+}
+
+export async function applyUpdate(downloadUrl = null) {
+  const res = await fetch(`${BASE_URL}/api/updater/apply`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ download_url: downloadUrl }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to apply update");
+  }
+  return res.json();
+}
+
+// ------------------------------------
+// ABDM & ABHA API (National Digital Health Stack)
+// ------------------------------------
+
+export async function fetchAbdmStatus() {
+  const res = await fetch(`${BASE_URL}/admin/abdm/status`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch ABDM status");
+  }
+  return res.json();
+}
+
+export async function generateAadhaarOtp(aadhaarNumber) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/generate-aadhaar-otp`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ aadhaar_number: aadhaarNumber }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate Aadhaar OTP");
+  }
+  return res.json();
+}
+
+export async function verifyAadhaarOtp({ txnId, otp, patientId = null, mobile = null }) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/verify-aadhaar-otp`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      txn_id: txnId,
+      otp: otp,
+      patient_id: patientId,
+      mobile: mobile,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to verify Aadhaar OTP");
+  }
+  return res.json();
+}
+
+export async function generateMobileOtp(mobileNumber) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/generate-mobile-otp`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ mobile_number: mobileNumber }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to generate Mobile OTP");
+  }
+  return res.json();
+}
+
+export async function verifyMobileOtp({ txnId, otp, patientId = null }) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/verify-mobile-otp`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      txn_id: txnId,
+      otp: otp,
+      patient_id: patientId,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to verify Mobile OTP");
+  }
+  return res.json();
+}
+
+export async function searchAbha(query) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/search`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ query: query }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "ABHA account not found on national registry");
+  }
+  return res.json();
+}
+
+export async function linkPatientAbha(patientId, abhaNumber, abhaAddress, profileData = null) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/link/${patientId}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      abha_number: abhaNumber,
+      abha_address: abhaAddress,
+      profile_data: profileData,
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to link ABHA to patient");
+  }
+  return res.json();
+}
+
+export async function unlinkPatientAbha(patientId) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/unlink/${patientId}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to unlink ABHA");
+  }
+  return res.json();
+}
+
+export async function fetchAbhaCard(patientId) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/card/${patientId}`, {
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to fetch ABHA card");
+  }
+  return res.json();
+}
+
+export async function sendAbhaCardWhatsApp(patientId) {
+  const res = await fetch(`${BASE_URL}/admin/abdm/send-card-whatsapp/${patientId}`, {
+    method: "POST",
+    headers: getAuthHeaders(),
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.detail || "Failed to send ABHA card to WhatsApp");
   }
   return res.json();
 }

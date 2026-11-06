@@ -9,9 +9,9 @@ from app.models import QueueEntry, Appointment, Patient, Doctor, Cabin
 from app.services.whatsapp import whatsapp_client
 from app.services.messages import message_service
 from app.config import settings
-from app.security import require_admin
+from app.security import require_staff
 
-router = APIRouter(prefix="/admin/queue", tags=["Waiting Room & Patient Queue"], dependencies=[Depends(require_admin)])
+router = APIRouter(prefix="/admin/queue", tags=["Waiting Room & Patient Queue"], dependencies=[Depends(require_staff)])
 
 
 class CabinCreate(BaseModel):

@@ -25,7 +25,12 @@ import {
   FiPrinter,
   FiSend,
   FiDownload,
-  FiXCircle
+  FiXCircle,
+  FiList,
+  FiGrid,
+  FiPhone,
+  FiCalendar,
+  FiUser
 } from "react-icons/fi";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
@@ -72,6 +77,7 @@ export default function PharmacyView() {
   const [pharmacyPrescriptions, setPharmacyPrescriptions] = useState([]);
   const [pageDispatch, setPageDispatch] = useState(1);
   const [pageSizeDispatch, setPageSizeDispatch] = useState(20);
+  const [desktopViewMode, setDesktopViewMode] = useState("table");
 
   const getTodayStr = () => new Date().toISOString().slice(0, 10);
   const getYesterdayStr = () => {
@@ -930,7 +936,7 @@ export default function PharmacyView() {
       const collectedAmount = dispenseForm.collect_payment
         ? (dispenseForm.amount_collected !== "" && dispenseForm.amount_collected !== undefined
             ? parseFloat(dispenseForm.amount_collected)
-            : totalAmount)
+            : null)
         : 0;
 
       const res = await dispensePrescription({
@@ -1081,8 +1087,9 @@ export default function PharmacyView() {
         kicker="Dispensary"
         title="Pharmacy & Medicine Inventory"
         icon={FiPackage}
+        actionsBelowOnMobile={true}
         rightAction={
-          <div className="flex items-center gap-3">
+          <div className="lead-header-actions flex flex-wrap items-center gap-2 sm:gap-2.5 w-full sm:w-auto">
             <button
               type="button"
               onClick={loadData}
@@ -1094,24 +1101,26 @@ export default function PharmacyView() {
             </button>
             <button
               onClick={handleOpenDispenseModal}
-              className="portal-action-btn flex items-center gap-1.5"
+              className="portal-action-btn flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
             >
               <FiCheckCircle size={15} />
               <span>Dispense Rx</span>
             </button>
             <button
               onClick={() => setIsGrnOpen(true)}
-              className="portal-action-btn flex items-center gap-1.5"
+              className="portal-action-btn flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
             >
               <FiPlus size={15} />
-              <span>Receive Stock (GRN)</span>
+              <span className="hidden sm:inline">Receive Stock (GRN)</span>
+              <span className="inline sm:hidden">Stock (GRN)</span>
             </button>
             <button
               onClick={() => setIsAddMedOpen(true)}
-              className="portal-action-btn portal-action-btn-blue flex items-center gap-1.5"
+              className="portal-action-btn portal-action-btn-blue flex items-center justify-center gap-1.5 flex-1 sm:flex-initial"
             >
               <FiPlus size={15} />
-              <span>Add Medicine</span>
+              <span className="hidden sm:inline">Add Medicine</span>
+              <span className="inline sm:hidden">Add Med</span>
             </button>
           </div>
         }
@@ -1407,14 +1416,40 @@ export default function PharmacyView() {
                   title="Filter by Specific Date"
                 />
 
-                <button
-                  type="button"
-                  onClick={() => setPageDispatch(1)}
-                  className="btn-submit"
-                  style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
+                {/* Desktop View Switcher */}
+                <div
+                  className="hidden md:inline-flex items-center rounded-lg border border-slate-200 bg-slate-100 p-0.5"
+                  style={{ height: "34px" }}
                 >
-                  Search
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopViewMode("table")}
+                    className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      desktopViewMode === "table"
+                        ? "bg-white text-slate-900 shadow-xs font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    style={{ height: "28px" }}
+                    title="Spreadsheet List View"
+                  >
+                    <FiList size={13} />
+                    <span>List View</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDesktopViewMode("cards")}
+                    className={`inline-flex items-center gap-1.5 px-3 rounded-md text-xs font-semibold transition cursor-pointer ${
+                      desktopViewMode === "cards"
+                        ? "bg-[#254d90] text-white shadow-xs font-bold"
+                        : "text-slate-600 hover:text-slate-900"
+                    }`}
+                    style={{ height: "28px" }}
+                    title="Responsive Cards View"
+                  >
+                    <FiGrid size={13} />
+                    <span>Cards View</span>
+                  </button>
+                </div>
                 {(searchDispatch || dateDispatch) && (
                   <button
                     type="button"
@@ -1455,7 +1490,10 @@ export default function PharmacyView() {
                 </p>
               </div>
             ) : (
-              <div className="dir-table-wrapper">
+              <>
+                {/* Desktop Table View */}
+                {desktopViewMode === "table" && (
+                  <div className="dir-table-wrapper pharmacy-desktop-table hidden md:flex flex-col">
                 <div className="dir-scroll-bar-header">
                   <span className="dir-scroll-hint">Prescription Medicine Dispatch Queue (Scroll horizontally to view all columns)</span>
                   <div className="flex items-center gap-3">
@@ -1603,9 +1641,9 @@ export default function PharmacyView() {
                               <span
                                 className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-bold border ${
                                   rx.fulfillment_type === "HYBRID"
-                                    ? "bg-indigo-50 text-indigo-700 border-indigo-200"
+                                    ? "bg-teal-50 text-teal-700 border-teal-200"
                                     : rx.fulfillment_type === "OUTSIDE" || isAllOutside
-                                    ? "bg-purple-50 text-purple-700 border-purple-200"
+                                    ? "bg-slate-100 text-slate-700 border-slate-300"
                                     : "bg-blue-50 text-blue-700 border-blue-200"
                                 }`}
                               >
@@ -1623,8 +1661,8 @@ export default function PharmacyView() {
                                   <span>Dispensed</span>
                                 </span>
                               ) : isAllOutside ? (
-                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-bold border text-[11px] bg-purple-50 text-purple-700 border-purple-200">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                                <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-bold border text-[11px] bg-slate-100 text-slate-700 border-slate-300">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
                                   <span>Outside Chemist</span>
                                 </span>
                               ) : (
@@ -1768,7 +1806,7 @@ export default function PharmacyView() {
                                     )}
                                   </div>
                                 ) : (
-                                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-purple-50 text-purple-700 border border-purple-200">
+                                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium rounded bg-slate-100 text-slate-700 border border-slate-300">
                                     Outside Chemist
                                   </span>
                                 )}
@@ -1795,6 +1833,291 @@ export default function PharmacyView() {
                 />
               </div>
             )}
+
+            {/* Mobile & Cards View */}
+            <div className={`${desktopViewMode === "cards" ? "block" : "block md:hidden"} w-full space-y-3`}>
+              <div className="flex items-center justify-between text-xs text-slate-500 font-semibold px-1 py-1">
+                <span>Showing {paginatedDispatch.length} of {filteredPrescriptions.length} prescriptions</span>
+                {dateDispatch && (
+                  <span className="bg-blue-100 text-blue-800 px-2 py-0.5 rounded text-[11px] font-bold">
+                    Date: {dateDispatch}
+                  </span>
+                )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {paginatedDispatch.map((rx) => {
+                  const meds = rx.medicines || [];
+                  const clinicCount = rx.clinic_meds_count ?? meds.filter((m) => (m.fulfillment || "CLINIC").toUpperCase() === "CLINIC").length;
+                  const outsideCount = rx.outside_meds_count ?? meds.filter((m) => (m.fulfillment || "").toUpperCase() === "OUTSIDE").length;
+                  const isAllOutside = rx.fulfillment_type === "OUTSIDE" || (outsideCount > 0 && clinicCount === 0);
+
+                  return (
+                    <div
+                      key={rx.id}
+                      className="bg-white rounded-xl border border-slate-200/90 shadow-sm hover:shadow-md transition-all p-3.5 flex flex-col justify-between gap-3 text-slate-800"
+                    >
+                      {/* Top: Rx UID, Date, Fulfillment & Status */}
+                      <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded">
+                              {rx.prescription_uid || `#RX-${rx.id}`}
+                            </span>
+                            <span
+                              className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${
+                                rx.fulfillment_type === "HYBRID"
+                                  ? "bg-teal-50 text-teal-700 border-teal-200"
+                                  : rx.fulfillment_type === "OUTSIDE" || isAllOutside
+                                  ? "bg-slate-100 text-slate-700 border-slate-300"
+                                  : "bg-blue-50 text-blue-700 border-blue-200"
+                              }`}
+                            >
+                              {rx.fulfillment_type === "HYBRID"
+                                ? "Hybrid"
+                                : rx.fulfillment_type === "OUTSIDE" || isAllOutside
+                                ? "Outside"
+                                : "Clinic"}
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1 mt-1 font-mono">
+                            <FiCalendar size={11} className="text-slate-400 shrink-0" />
+                            <span>{activeTab === "dispensed" ? (rx.dispensed_at || rx.created_at || "—") : (rx.created_at || "—")}</span>
+                          </div>
+                        </div>
+
+                        <div className="text-right">
+                          {rx.is_cancelled || rx.status === "CANCELLED" ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10.5px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                              <FiXCircle size={11} />
+                              <span>Cancelled</span>
+                            </span>
+                          ) : rx.is_dispensed ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border text-[10.5px] bg-emerald-50 text-emerald-700 border-emerald-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                              <span>Dispensed</span>
+                            </span>
+                          ) : isAllOutside ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full font-bold border text-[10.5px] bg-slate-100 text-slate-700 border-slate-300">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-500" />
+                              <span>Outside</span>
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border text-[10.5px] bg-amber-50 text-amber-700 border-amber-200">
+                              <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                              <span>Pending</span>
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Patient, Phone & Doctor */}
+                      <div className="space-y-1.5 text-xs">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-slate-900 text-sm truncate" title={rx.patient_name}>
+                            {rx.patient_name || "Patient"}
+                          </span>
+                          {rx.patient_phone && (
+                            <a
+                              href={`tel:${rx.patient_phone}`}
+                              className="inline-flex items-center gap-1 text-[11px] font-mono text-[#254d90] hover:text-[#1e3f78] bg-blue-50/60 hover:bg-blue-50 px-2 py-0.5 rounded transition shrink-0 ml-2"
+                            >
+                              <FiPhone size={10} />
+                              <span>{rx.patient_phone}</span>
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="flex items-center justify-between text-[11.5px] text-slate-600">
+                          <div className="flex items-center gap-1 truncate">
+                            <FiUser size={12} className="text-slate-400 shrink-0" />
+                            <span className="font-medium text-slate-700 truncate">{rx.doctor_name || "Doctor"}</span>
+                          </div>
+                          {rx.diagnosis && (
+                            <span className="text-slate-500 text-[11px] truncate max-w-[150px]" title={rx.diagnosis}>
+                              {rx.diagnosis}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* Medicines List */}
+                        <div className="bg-slate-50 border border-slate-100 rounded-lg p-2 space-y-1">
+                          <div className="flex items-center justify-between font-semibold text-[11px] text-slate-600">
+                            <span>Prescribed Medicines</span>
+                            <span className="font-mono text-slate-500">
+                              {clinicCount > 0 && `${clinicCount} Clinic`}
+                              {clinicCount > 0 && outsideCount > 0 && " • "}
+                              {outsideCount > 0 && `${outsideCount} Outside`}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-1 max-h-[85px] overflow-y-auto">
+                            {meds && meds.length > 0 ? (
+                              meds.map((m, idx) => {
+                                const isOutside = (m.fulfillment || "").toUpperCase() === "OUTSIDE";
+                                return (
+                                  <span
+                                    key={idx}
+                                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded font-semibold border ${
+                                      isOutside
+                                        ? "bg-amber-50 text-amber-900 border-amber-300"
+                                        : "bg-white text-slate-800 border-slate-200"
+                                    }`}
+                                    style={{ fontSize: "10.5px" }}
+                                    title={`${m.name} - ${m.dosage || "1-0-1"} (${m.duration || "5d"})`}
+                                  >
+                                    <span>{m.name}</span>
+                                    {m.dosage && <span className="text-[9px] text-slate-500 font-normal">({m.dosage})</span>}
+                                    {isOutside && (
+                                      <span className="text-[8.5px] font-bold uppercase text-amber-700 bg-amber-100 px-1 rounded">
+                                        Out
+                                      </span>
+                                    )}
+                                  </span>
+                                );
+                              })
+                            ) : (
+                              <span className="text-slate-400 text-[11px]">—</span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Billing & Invoice Status */}
+                        <div className="flex items-center justify-between pt-1 text-[11px]">
+                          <span className="text-slate-500 font-medium">Billing / Payment:</span>
+                          {rx.invoice ? (
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-slate-900">
+                                ₹{rx.invoice.total?.toLocaleString()}
+                              </span>
+                              <span
+                                className={`px-1.5 py-0.5 rounded text-[10px] font-bold border ${
+                                  rx.invoice.payment_status === "PAID"
+                                    ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                    : rx.invoice.payment_status === "PARTIALLY_PAID"
+                                    ? "bg-blue-50 text-blue-700 border-blue-200"
+                                    : "bg-amber-50 text-amber-700 border-amber-200"
+                                }`}
+                              >
+                                {rx.invoice.payment_status}
+                              </span>
+                            </div>
+                          ) : rx.is_dispensed ? (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-slate-100 text-slate-700 border border-slate-200">
+                              Direct Dispense
+                            </span>
+                          ) : (
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-600 border border-slate-200">
+                              Unbilled (On Dispense)
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                        {rx.is_cancelled || rx.status === "CANCELLED" ? (
+                          <div className="w-full text-center py-1 text-xs text-rose-600 font-semibold bg-rose-50 rounded border border-rose-100">
+                            Prescription Cancelled {rx.cancellation_reason ? `(${rx.cancellation_reason})` : ""}
+                          </div>
+                        ) : !rx.is_dispensed && !isAllOutside ? (
+                          <>
+                            <button
+                              type="button"
+                              onClick={() => handleOpenDispenseForRx(rx)}
+                              className="flex-1 min-w-[130px] inline-flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg bg-[#254d90] text-white hover:bg-[#1b396b] shadow-2xs transition"
+                            >
+                              <FiDollarSign size={13} />
+                              <span>Dispense &amp; Collect</span>
+                            </button>
+
+                            {rx.invoice ? (
+                              <span
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md bg-blue-50 text-blue-700 border border-blue-200"
+                                title={`Billed at Front Desk (${rx.invoice.invoice_number})`}
+                              >
+                                <FiCheck size={11} />
+                                <span>Frontdesk Billed</span>
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                disabled={sendingBillingId === rx.id}
+                                onClick={() => handleSendToFrontDesk(rx)}
+                                className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-bold rounded-md bg-teal-50 text-teal-700 border border-teal-200 hover:bg-teal-600 hover:text-white transition disabled:opacity-50"
+                              >
+                                {sendingBillingId === rx.id ? (
+                                  <span className="animate-spin text-xs">⌛</span>
+                                ) : (
+                                  <FiSend size={11} />
+                                )}
+                                <span>Send to Frontdesk</span>
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => handleOpenCancelModal(rx)}
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded-md bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-600 hover:text-white transition"
+                            >
+                              <FiXCircle size={11} />
+                              <span>Cancel</span>
+                            </button>
+                          </>
+                        ) : rx.is_dispensed ? (
+                          <div className="flex items-center gap-1.5 w-full justify-end">
+                            {rx.invoice && rx.invoice.payment_status !== "PAID" && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenCollectModal(rx)}
+                                className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-bold rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 shadow-2xs transition"
+                              >
+                                <FiDollarSign size={12} />
+                                <span>Collect ₹{rx.invoice.balance_due || rx.invoice.total}</span>
+                              </button>
+                            )}
+                            {rx.invoice ? (
+                              <button
+                                type="button"
+                                onClick={() => handleViewReceipt(rx.invoice.id)}
+                                className="flex-1 inline-flex items-center justify-center gap-1 px-2.5 py-1.5 text-xs font-semibold rounded-md bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 shadow-2xs transition"
+                              >
+                                <FiFileText size={12} className="text-[#254d90]" />
+                                <span>Receipt</span>
+                              </button>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                <FiCheck size={12} />
+                                <span>Fulfilled</span>
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="inline-flex items-center px-2 py-1 text-xs font-medium rounded bg-slate-100 text-slate-700 border border-slate-300">
+                            Outside Chemist
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Mobile Pagination */}
+              <Pagination
+                currentPage={pageDispatch}
+                totalItems={filteredPrescriptions.length}
+                pageSize={pageSizeDispatch}
+                onPageChange={(p) => setPageDispatch(p)}
+                onPageSizeChange={(sz) => {
+                  setPageSizeDispatch(sz);
+                  setPageDispatch(1);
+                }}
+                pageSizeOptions={[10, 20, 50, "all"]}
+                itemLabel="prescriptions"
+              />
+            </div>
+          </>
+        )}
           </>
         )}
 
@@ -3548,27 +3871,55 @@ export default function PharmacyView() {
                   />
                 </div>
 
-                {/* If Cash: Tendered & Change */}
+                {/* If Cash: Tendered & Change Matching Sections */}
                 {collectForm.payment_method === "Cash" ? (
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Cash Tendered &amp; Change Calculator
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="number"
-                        min="0"
-                        placeholder="Cash received from patient..."
-                        value={collectForm.cash_tendered || ""}
-                        onChange={(e) => setCollectForm({ ...collectForm, cash_tendered: e.target.value })}
-                        className="w-1/2 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                      />
-                      <div className="w-1/2 px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
-                        <span className="text-[10px] text-slate-400 font-sans">Change:</span>
-                        <span className="text-emerald-700 font-bold">
-                          ₹{Math.max(0, (parseFloat(collectForm.cash_tendered) || 0) - (parseFloat(collectForm.amount) || 0))}
+                  <div className="grid grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                        Cash Tendered (₹)
+                      </label>
+                      <div className="flex items-center w-full rounded-lg border border-slate-300 bg-white overflow-hidden focus-within:border-[#254d90] focus-within:ring-1 focus-within:ring-[#254d90] transition" style={{ height: "40px" }}>
+                        <span className="px-3 bg-slate-50 border-r border-slate-200 text-slate-600 font-mono font-bold text-sm h-full flex items-center justify-center select-none shrink-0">
+                          ₹
                         </span>
+                        <input
+                          type="number"
+                          min="0"
+                          placeholder="e.g. 500"
+                          value={collectForm.cash_tendered || ""}
+                          onChange={(e) => setCollectForm({ ...collectForm, cash_tendered: e.target.value })}
+                          className="!border-none !outline-none !shadow-none !h-full !px-3 text-sm font-bold font-mono text-slate-900 bg-transparent w-full"
+                        />
                       </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-slate-700 block mb-1.5">
+                        Change to Return (₹)
+                      </label>
+                      {(() => {
+                        const changeAmount = Math.max(
+                          0,
+                          (parseFloat(collectForm.cash_tendered) || 0) - (parseFloat(collectForm.amount) || 0)
+                        );
+                        return (
+                          <div
+                            className={`w-full px-3 rounded-lg border text-sm font-bold font-mono flex items-center justify-between transition ${
+                              changeAmount > 0
+                                ? "bg-emerald-50 border-emerald-300 text-emerald-800"
+                                : "bg-slate-50 border-slate-200 text-slate-500"
+                            }`}
+                            style={{ height: "40px" }}
+                          >
+                            <span className="text-xs font-medium font-sans">
+                              {changeAmount > 0 ? "Return:" : "Change:"}
+                            </span>
+                            <span className={`text-sm font-bold font-mono ${changeAmount > 0 ? "text-emerald-700" : "text-slate-700"}`}>
+                              ₹{changeAmount.toLocaleString()}
+                            </span>
+                          </div>
+                        );
+                      })()}
                     </div>
                   </div>
                 ) : (

@@ -22,7 +22,7 @@ export default function StatCard({ title, value, Icon, colorTheme = "blue", tren
     green: "#16a34a",
     whatsapp: "#16a34a",
     orange: "#f97316",
-    purple: "#79808d",
+
   };
   const chartColor = strokeColors[colorTheme] || strokeColors.blue;
 

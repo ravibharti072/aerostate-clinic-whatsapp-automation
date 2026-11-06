@@ -42,6 +42,32 @@ class Settings(BaseSettings):
     LAB_TAT_STANDARD: int = 24
     FOLLOWUP_DAYS: int = 7
 
+    # Offline & Cloud Sync Configuration
+    CLOUD_SYNC_ENABLED: bool = False
+    CLOUD_SYNC_URL: Optional[str] = None
+    CLOUD_SYNC_API_KEY: Optional[str] = None
+    AUTO_SYNC_INTERVAL_SECONDS: int = 30
+
+    # Auto-Updater Configuration
+    APP_VERSION: str = "2.2.5"
+    AUTO_UPDATE_ENABLED: bool = True
+    AUTO_UPDATE_ON_STARTUP: bool = True
+    UPDATE_MANIFEST_URL: str = "https://raw.githubusercontent.com/ravibharti072/aerostate-clinic-whatsapp-automation/main/version.json"
+    UPDATE_GITHUB_REPO: str = "ravibharti072/aerostate-clinic-whatsapp-automation"
+
+    # Ayushman Bharat Digital Mission (ABDM) & ABHA Configuration
+    ABDM_CLIENT_ID: Optional[str] = None
+    ABDM_CLIENT_SECRET: Optional[str] = None
+    ABDM_BASE_URL: str = "https://dev.abdm.gov.in"
+    ABDM_MOCK_MODE: bool = True
+
+    # Razorpay Payment Gateway & 100% Automated Confirmation
+    RAZORPAY_KEY_ID: Optional[str] = None
+    RAZORPAY_KEY_SECRET: Optional[str] = None
+    RAZORPAY_WEBHOOK_SECRET: Optional[str] = None
+    RAZORPAY_ENABLED: bool = False
+    RAZORPAY_AUTO_SEND_BOOKING_LINK: bool = True
+
     class Config:
         env_file = ".env"
         extra = "ignore"
@@ -56,4 +82,16 @@ if not settings.SECRET_KEY or settings.SECRET_KEY.startswith("YOUR_"):
         "PRODUCTION WARNING: SECRET_KEY is not defined in .env! Generated an ephemeral key. "
         "User sessions will NOT persist across server restarts or multi-worker processes. "
         "Run `python -c \"import secrets; print(secrets.token_hex(32))\"` and set SECRET_KEY in your server .env file."
+    )
+
+if settings.VERIFY_TOKEN == "aerostate_secret_verify_token_2026":
+    logger.warning(
+        "SECURITY NOTICE: Default VERIFY_TOKEN ('aerostate_secret_verify_token_2026') is in use. "
+        "For production environments, please generate a custom random token and set VERIFY_TOKEN in .env."
+    )
+
+if not settings.META_APP_SECRET or not settings.META_APP_SECRET.strip():
+    logger.warning(
+        "SECURITY NOTICE: META_APP_SECRET is not configured in .env. "
+        "Meta webhook signatures cannot be validated until you add your App Secret from Meta App Dashboard -> Basic Settings."
     )

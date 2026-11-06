@@ -22,9 +22,11 @@ import {
   FiCalendar,
   FiClock,
   FiMail,
+  FiAward,
 } from "react-icons/fi";
 import PortalHeader from "../../components/portalheader/PortalHeader";
 import StatCard from "../../components/statcard/StatCard";
+import { useAuth } from "../../context/AuthContext";
 import {
   fetchSuperAdminUsers,
   fetchSuperAdminStats,
@@ -39,7 +41,15 @@ import {
   setClinicAdminCredentials,
 } from "../../api";
 
+
+const calculateExpiryDate = (days) => {
+  const d = new Date();
+  d.setDate(d.getDate() + Number(days));
+  return d.toISOString().split("T")[0];
+};
+
 export default function SuperAdminView() {
+  const { user: currentAuthUser, updateCurrentUser } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const initialTab = searchParams.get("tab") === "admins" ? "admins" : "clinics";
   const [activeTab, setActiveTab] = useState(initialTab); // "clinics" or "admins"
@@ -147,16 +157,19 @@ export default function SuperAdminView() {
       name: "",
       tagline: "",
       address: "",
-      city: "Agra",
-      state: "Uttar Pradesh",
+      city: "",
+      state: "",
       phone: "",
       email: "",
-      operating_hours: "Mon-Sat: 09:00 AM - 08:00 PM",
+      operating_hours: "",
       phone_number_id: "",
       display_phone_number: "",
       whatsapp_token: "",
       verify_token: "",
       is_active: true,
+      subscription_plan: "Monthly",
+      subscription_expiry_date: calculateExpiryDate(30),
+      subscription_status: "Active",
       admin_username: `admin_cln${nextIdx}`,
       admin_password: "",
       admin_name: "",
@@ -172,22 +185,54 @@ export default function SuperAdminView() {
       name: c.name || "",
       tagline: c.tagline || "",
       address: c.address || "",
-      city: c.city || "Agra",
-      state: c.state || "Uttar Pradesh",
+      city: c.city || "",
+      state: c.state || "",
       phone: c.phone || "",
       email: c.email || "",
-      operating_hours: c.operating_hours || "Mon-Sat: 09:00 AM - 08:00 PM",
+      operating_hours: c.operating_hours || "",
       phone_number_id: c.phone_number_id || "",
       display_phone_number: c.display_phone_number || "",
       whatsapp_token: "",
       verify_token: c.verify_token || "",
       is_active: c.is_active,
+      subscription_plan: c.subscription_plan || "Monthly",
+      subscription_expiry_date: c.subscription_expiry_date || calculateExpiryDate(30),
+      subscription_status: c.subscription_status || "Active",
       admin_username: c.admin_username || "",
       admin_password: "",
       admin_name: c.admin_name || "",
     });
     setClinicError(null);
     setIsClinicModalOpen(true);
+  };
+
+  const handlePlanChange = (plan) => {
+    let days = 30;
+    if (plan === "Quarterly") days = 90;
+    else if (plan === "Semi-Annual") days = 180;
+    else if (plan === "Annual") days = 365;
+    else if (plan === "Trial") days = 14;
+
+    if (plan === "Custom") {
+      setClinicFormData((prev) => ({
+        ...prev,
+        subscription_plan: plan,
+      }));
+    } else {
+      setClinicFormData((prev) => ({
+        ...prev,
+        subscription_plan: plan,
+        subscription_expiry_date: calculateExpiryDate(days),
+      }));
+    }
+  };
+
+  const applyPlanPreset = (days, planName) => {
+    setClinicFormData((prev) => ({
+      ...prev,
+      subscription_plan: planName,
+      subscription_expiry_date: calculateExpiryDate(days),
+    }));
   };
 
   const handleSaveClinic = async (e) => {
@@ -313,9 +358,13 @@ export default function SuperAdminView() {
     setSaving(true);
 
     try {
+      const cleanUsername = formData.username.trim().toLowerCase();
+      const cleanName = formData.name.trim();
+
       if (editingUser) {
         const updatePayload = {
-          name: formData.name,
+          username: cleanUsername,
+          name: cleanName,
           role: "SuperAdmin",
           is_active: formData.is_active,
         };
@@ -323,11 +372,25 @@ export default function SuperAdminView() {
           updatePayload.password = formData.password.trim();
         }
         await updateSuperAdminUser(editingUser.id, updatePayload);
+
+        // If the logged-in superadmin updated their own username/name, update the session
+        if (currentAuthUser && editingUser.id === currentAuthUser.id && updateCurrentUser) {
+          updateCurrentUser({
+            username: cleanUsername,
+            name: cleanName,
+          });
+        }
       } else {
-        await createSuperAdminUser({ ...formData, role: "SuperAdmin" });
+        await createSuperAdminUser({
+          username: cleanUsername,
+          name: cleanName,
+          password: formData.password.trim(),
+          role: "SuperAdmin",
+          is_active: formData.is_active,
+        });
       }
       setIsModalOpen(false);
-      loadData();
+      await loadData();
     } catch (err) {
       setFormError(err.message || "Failed to save administrator");
     } finally {
@@ -520,7 +583,7 @@ export default function SuperAdminView() {
               title="Latest Activation"
               value={latestClinic?.activation_date || "25 Oct 2026"}
               Icon={FiCalendar}
-              colorTheme="purple"
+              colorTheme="brand-teal"
               trend={latestClinic?.code || "CLN-001"}
             />
           </>
@@ -530,7 +593,7 @@ export default function SuperAdminView() {
               title="SuperAdmin Accounts"
               value={superadminUsers.length}
               Icon={FiShield}
-              colorTheme="purple"
+              colorTheme="brand-teal"
               trend="Root SaaS Authorities"
             />
             <StatCard
@@ -625,6 +688,7 @@ export default function SuperAdminView() {
                       <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>CODE</th>
                       <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>CLINIC NAME & ADDRESS</th>
                       <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>PRIMARY ADMIN ID</th>
+                      <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>SUBSCRIPTION &amp; EXPIRY</th>
                       <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>ACTIVATION DATE</th>
                       <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>WHATSAPP PHONE ID</th>
                       <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>CONTACT / DISPLAY PHONE</th>
@@ -680,6 +744,32 @@ export default function SuperAdminView() {
                                 <FiKey size={11} /> + Create Admin
                               </button>
                             )}
+                          </td>
+
+                          {/* SUBSCRIPTION & EXPIRY */}
+                          <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
+                            <div className="flex flex-col">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-[#254d90] bg-blue-50 border border-blue-200/80 px-2 py-0.5 rounded text-[11px]">
+                                  {c.subscription_plan || "Monthly"}
+                                </span>
+                                <span
+                                  className={`px-1.5 py-0.2 rounded text-[10px] font-bold ${
+                                    c.is_expired
+                                      ? "bg-rose-100 text-rose-700"
+                                      : (c.days_remaining != null && c.days_remaining <= 5)
+                                      ? "bg-amber-100 text-amber-700"
+                                      : "bg-emerald-100 text-emerald-700"
+                                  }`}
+                                >
+                                  {c.is_expired ? "Expired" : `${c.days_remaining ?? 30}d left`}
+                                </span>
+                              </div>
+                              <span className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-1 font-mono">
+                                <FiClock size={11} className="text-slate-400" />
+                                Expires: {c.subscription_expiry_display || c.subscription_expiry_date || "—"}
+                              </span>
+                            </div>
                           </td>
 
                           {/* 3. ACTIVATION DATE */}
@@ -862,7 +952,7 @@ export default function SuperAdminView() {
                       return (
                         <tr key={u.id}>
                           <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
-                            <span className="font-mono font-bold text-purple-700 bg-purple-50 px-2 py-0.5 rounded border border-purple-200">
+                            <span className="font-mono font-bold text-[#126868] bg-[#126868]/10 px-2 py-0.5 rounded border border-[#126868]/30">
                               {u.username}
                             </span>
                           </td>
@@ -873,7 +963,7 @@ export default function SuperAdminView() {
 
                           <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                             <span
-                              className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold border bg-purple-50 text-purple-700 border-purple-200"
+                              className="inline-flex items-center px-2.5 py-0.5 rounded-full font-bold border bg-[#126868]/10 text-[#126868] border border-[#126868]/30"
                               style={{ fontSize: "11px" }}
                             >
                               SuperAdmin (Master Platform Access)
@@ -932,334 +1022,401 @@ export default function SuperAdminView() {
 
       {/* CREATE / EDIT CLINIC MODAL */}
       {isClinicModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-2xl p-6 relative animate-in fade-in zoom-in-95 duration-150 my-8">
-            <button
-              onClick={() => setIsClinicModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-            >
-              <FiX size={18} />
-            </button>
-
-            <div className="flex items-center space-x-3 mb-5">
-              <div className="portal-header-icon-box">
-                <FiHome size={24} />
-              </div>
+        <div className="modal-overlay" onClick={() => setIsClinicModalOpen(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: "680px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 m-0">
-                  {editingClinic ? "Edit Clinic Profile" : "Register New Clinic"}
-                </h2>
-                <p className="text-xs text-slate-500 m-0 mt-0.5">
-                  Configure clinic profile, activation details, and Meta WhatsApp Phone Number ID
-                </p>
+                <h2>{editingClinic ? "Edit Clinic Profile" : "Register New Clinic"}</h2>
+                <div className="modal-kicker">
+                  Configure clinic profile, routing details, and initial administrator credentials
+                </div>
               </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setIsClinicModalOpen(false)}
+              >
+                <FiX size={18} />
+              </button>
             </div>
 
-            {clinicError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                {clinicError}
-              </div>
-            )}
+            <form onSubmit={handleSaveClinic} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="modal-body space-y-4">
+                {clinicError && (
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                    {clinicError}
+                  </div>
+                )}
 
-            <form onSubmit={handleSaveClinic} className="space-y-4 text-xs sm:text-sm">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Clinic Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Apex Health & Dental Clinic"
-                    value={clinicFormData.name}
-                    onChange={(e) => setClinicFormData({ ...clinicFormData, name: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Branch Code (Unique) *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. CLN-002"
-                    value={clinicFormData.code}
-                    onChange={(e) => setClinicFormData({ ...clinicFormData, code: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono font-bold uppercase focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Tagline / Speciality Description
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Multi-Specialty Dental & General OPD Consultation"
-                  value={clinicFormData.tagline}
-                  onChange={(e) => setClinicFormData({ ...clinicFormData, tagline: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                />
-              </div>
-
-              {/* Meta WhatsApp Section Highlight */}
-              <div className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3">
-                <div className="flex items-center space-x-2">
-                  <FiPhoneCall className="text-[#254d90]" size={16} />
-                  <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider m-0">
-                    Meta WhatsApp Routing Configuration
-                  </h4>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Meta Phone Number ID *
-                    </label>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Clinic Name *</label>
                     <input
                       type="text"
-                      placeholder="e.g. 584285741438920"
-                      value={clinicFormData.phone_number_id}
-                      onChange={(e) =>
-                        setClinicFormData({ ...clinicFormData, phone_number_id: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
+                      required
+                      placeholder="e.g. Apex Health & Dental Clinic"
+                      value={clinicFormData.name}
+                      onChange={(e) => setClinicFormData({ ...clinicFormData, name: e.target.value })}
                     />
-                    <span className="text-[10px] text-slate-500 mt-0.5 block">
-                      Routes incoming Meta WhatsApp messages to this clinic
-                    </span>
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Display WhatsApp Number
-                    </label>
+                  <div className="form-group">
+                    <label>Branch Code (Unique) *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. CLN-002"
+                      value={clinicFormData.code}
+                      onChange={(e) => setClinicFormData({ ...clinicFormData, code: e.target.value })}
+                      className="font-mono font-bold uppercase"
+                    />
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Tagline / Speciality Description</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Multi-Specialty Dental & General OPD Consultation"
+                    value={clinicFormData.tagline}
+                    onChange={(e) => setClinicFormData({ ...clinicFormData, tagline: e.target.value })}
+                  />
+                </div>
+
+                {/* SaaS Subscription & License Validity */}
+                <div className="p-3.5 bg-blue-50/60 border border-blue-200/80 rounded-xl space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-xs font-bold text-[#254d90] uppercase tracking-wide">
+                      <FiAward className="text-[#254d90]" size={14} />
+                      <span>Clinic Subscription Model &amp; Validity</span>
+                    </div>
+                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
+                      clinicFormData.subscription_status === "Active"
+                        ? "bg-emerald-100 text-emerald-800 border border-emerald-200"
+                        : clinicFormData.subscription_status === "Trial"
+                        ? "bg-amber-100 text-amber-800 border border-amber-200"
+                        : "bg-rose-100 text-rose-800 border border-rose-200"
+                    }`}>
+                      {clinicFormData.subscription_status || "Active"}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-600 m-0">
+                    Select a subscription plan model or pick a custom expiration date. Clinics will see their validity and renewal date inside their portal.
+                  </p>
+
+                  <div className="form-row">
+                    <div className="form-group m-0">
+                      <label className="text-xs">Subscription Plan</label>
+                      <select
+                        value={clinicFormData.subscription_plan}
+                        onChange={(e) => handlePlanChange(e.target.value)}
+                        className="text-xs font-semibold"
+                      >
+                        <option value="Monthly">Monthly Plan (30 Days)</option>
+                        <option value="Quarterly">Quarterly Plan (90 Days)</option>
+                        <option value="Semi-Annual">Semi-Annual Plan (180 Days)</option>
+                        <option value="Annual">Annual Plan (365 Days)</option>
+                        <option value="Trial">14-Day Free Trial</option>
+                        <option value="Custom">Custom Date / Plan</option>
+                      </select>
+                    </div>
+
+                    <div className="form-group m-0">
+                      <label className="text-xs">Expiry Date (Calendar Option) *</label>
+                      <input
+                        type="date"
+                        required
+                        value={clinicFormData.subscription_expiry_date || ""}
+                        onChange={(e) =>
+                          setClinicFormData({
+                            ...clinicFormData,
+                            subscription_expiry_date: e.target.value,
+                          })
+                        }
+                        className="text-xs font-mono font-semibold"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Quick Preset Buttons */}
+                  <div className="flex items-center gap-1.5 flex-wrap pt-0.5">
+                    <span className="text-[11px] text-slate-600 font-medium mr-1">Quick Presets:</span>
+                    <button
+                      type="button"
+                      onClick={() => applyPlanPreset(30, "Monthly")}
+                      className="px-2 py-0.5 text-[11px] font-semibold bg-white text-[#254d90] hover:bg-blue-100 border border-blue-200 rounded transition cursor-pointer"
+                    >
+                      +30 Days (Monthly)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPlanPreset(90, "Quarterly")}
+                      className="px-2 py-0.5 text-[11px] font-semibold bg-white text-[#254d90] hover:bg-blue-100 border border-blue-200 rounded transition cursor-pointer"
+                    >
+                      +90 Days (Quarterly)
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => applyPlanPreset(365, "Annual")}
+                      className="px-2 py-0.5 text-[11px] font-semibold bg-white text-[#254d90] hover:bg-blue-100 border border-blue-200 rounded transition cursor-pointer"
+                    >
+                      +1 Year (Annual)
+                    </button>
+                  </div>
+
+                  <div className="form-group m-0 pt-1">
+                    <label className="text-xs">Subscription Status</label>
+                    <select
+                      value={clinicFormData.subscription_status}
+                      onChange={(e) =>
+                        setClinicFormData({ ...clinicFormData, subscription_status: e.target.value })
+                      }
+                      className="text-xs font-semibold"
+                    >
+                      <option value="Active">Active (Full Operational Access)</option>
+                      <option value="Trial">Trial Period</option>
+                      <option value="Suspended">Suspended</option>
+                      <option value="Expired">Expired</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Meta WhatsApp Configuration */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <div className="flex items-center gap-2 text-xs font-bold text-slate-800 uppercase tracking-wide">
+                    <FiPhoneCall className="text-[#254d90]" size={14} />
+                    <span>Meta WhatsApp Routing Configuration</span>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group m-0">
+                      <label className="text-xs">Meta Phone Number ID (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. 584285741438920"
+                        value={clinicFormData.phone_number_id}
+                        onChange={(e) =>
+                          setClinicFormData({ ...clinicFormData, phone_number_id: e.target.value })
+                        }
+                        className="font-mono text-xs"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">
+                        Routes incoming Meta WhatsApp messages to this clinic
+                      </span>
+                    </div>
+
+                    <div className="form-group m-0">
+                      <label className="text-xs">Display WhatsApp Number</label>
+                      <input
+                        type="text"
+                        placeholder="e.g. +91 97584 82859"
+                        value={clinicFormData.display_phone_number}
+                        onChange={(e) =>
+                          setClinicFormData({ ...clinicFormData, display_phone_number: e.target.value })
+                        }
+                        className="font-mono text-xs"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-0.5 block">
+                        Shown to patients in booking confirmations
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="form-row">
+                    <div className="form-group m-0">
+                      <label className="text-xs">Dedicated WhatsApp Access Token (Optional)</label>
+                      <input
+                        type="password"
+                        placeholder={
+                          editingClinic?.has_custom_token
+                            ? "•••••••• (Leave blank to keep existing)"
+                            : "Leave blank to inherit platform Master Token"
+                        }
+                        value={clinicFormData.whatsapp_token}
+                        onChange={(e) =>
+                          setClinicFormData({ ...clinicFormData, whatsapp_token: e.target.value })
+                        }
+                        className="text-xs"
+                      />
+                    </div>
+
+                    <div className="form-group m-0">
+                      <label className="text-xs">Verify Token (Optional)</label>
+                      <input
+                        type="text"
+                        placeholder="Leave blank to use default verify token"
+                        value={clinicFormData.verify_token}
+                        onChange={(e) =>
+                          setClinicFormData({ ...clinicFormData, verify_token: e.target.value })
+                        }
+                        className="text-xs font-mono"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Optional Location & Hours Note */}
+                <div className="p-3 bg-blue-50/60 border border-blue-200/70 rounded-xl text-xs text-blue-900 space-y-1">
+                  <div className="font-semibold flex items-center gap-1.5">
+                    <span>📍 Clinic Facility Details (Optional at Registration)</span>
+                  </div>
+                  <p className="text-[11px] text-blue-800/80 m-0">
+                    Address, contact phone, email, and operating hours can be filled now or left blank. The clinic administrator will configure and update these anytime from their Clinic Settings panel.
+                  </p>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Street Address (Optional)</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 14, Commercial Center"
+                      value={clinicFormData.address}
+                      onChange={(e) => setClinicFormData({ ...clinicFormData, address: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>City &amp; State (Optional)</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <input
+                        type="text"
+                        placeholder="City"
+                        value={clinicFormData.city}
+                        onChange={(e) => setClinicFormData({ ...clinicFormData, city: e.target.value })}
+                      />
+                      <input
+                        type="text"
+                        placeholder="State"
+                        value={clinicFormData.state}
+                        onChange={(e) => setClinicFormData({ ...clinicFormData, state: e.target.value })}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Contact Phone (Optional)</label>
                     <input
                       type="text"
                       placeholder="e.g. +91 97584 82859"
-                      value={clinicFormData.display_phone_number}
-                      onChange={(e) =>
-                        setClinicFormData({ ...clinicFormData, display_phone_number: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                    />
-                    <span className="text-[10px] text-slate-500 mt-0.5 block">
-                      Shown to patients in booking confirmations
-                    </span>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Dedicated WhatsApp Access Token (Optional)
-                    </label>
-                    <input
-                      type="password"
-                      placeholder={
-                        editingClinic?.has_custom_token
-                          ? "•••••••• (Leave blank to keep existing)"
-                          : "Leave blank to inherit platform Master Token"
-                      }
-                      value={clinicFormData.whatsapp_token}
-                      onChange={(e) =>
-                        setClinicFormData({ ...clinicFormData, whatsapp_token: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
+                      value={clinicFormData.phone}
+                      onChange={(e) => setClinicFormData({ ...clinicFormData, phone: e.target.value })}
+                      className="font-mono"
                     />
                   </div>
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Verify Token (Optional)
-                    </label>
+                  <div className="form-group">
+                    <label>Operating Hours (Optional)</label>
                     <input
                       type="text"
-                      placeholder="Leave blank to use default verify token"
-                      value={clinicFormData.verify_token}
+                      placeholder="e.g. Mon-Sat: 09:00 AM - 08:00 PM"
+                      value={clinicFormData.operating_hours}
                       onChange={(e) =>
-                        setClinicFormData({ ...clinicFormData, verify_token: e.target.value })
+                        setClinicFormData({ ...clinicFormData, operating_hours: e.target.value })
                       }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs font-mono focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
                     />
                   </div>
                 </div>
-              </div>
 
-              {/* Physical Location & Hours */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Street Address
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. 14, Commercial Center"
-                    value={clinicFormData.address}
-                    onChange={(e) => setClinicFormData({ ...clinicFormData, address: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                  />
-                </div>
+                {/* Primary Clinic Admin Initial Credentials */}
+                {!editingClinic && (
+                  <div className="p-3.5 bg-amber-50/70 border border-amber-200 rounded-xl space-y-3">
+                    <div className="flex items-center gap-2 text-xs font-bold text-amber-950 uppercase tracking-wide">
+                      <FiKey className="text-amber-600" size={14} />
+                      <span>Primary Clinic Admin Initial Credentials</span>
+                    </div>
+                    <p className="text-[11px] text-amber-900/80 m-0">
+                      Provision initial login credentials so the clinic administrator can immediately log in and manage doctors, staff, and appointments.
+                    </p>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    City & State
-                  </label>
-                  <div className="grid grid-cols-2 gap-2">
-                    <input
-                      type="text"
-                      placeholder="City"
-                      value={clinicFormData.city}
-                      onChange={(e) => setClinicFormData({ ...clinicFormData, city: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-900"
-                    />
-                    <input
-                      type="text"
-                      placeholder="State"
-                      value={clinicFormData.state}
-                      onChange={(e) => setClinicFormData({ ...clinicFormData, state: e.target.value })}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs bg-white text-slate-900"
-                    />
-                  </div>
-                </div>
-              </div>
+                    <div className="form-row">
+                      <div className="form-group m-0">
+                        <label className="text-xs">Admin Login ID (Username) *</label>
+                        <input
+                          type="text"
+                          required
+                          placeholder="e.g. agra_admin"
+                          value={clinicFormData.admin_username}
+                          onChange={(e) =>
+                            setClinicFormData({
+                              ...clinicFormData,
+                              admin_username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+                            })
+                          }
+                          className="font-mono text-xs"
+                        />
+                      </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Contact Phone
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. +91 97584 82859"
-                    value={clinicFormData.phone}
-                    onChange={(e) => setClinicFormData({ ...clinicFormData, phone: e.target.value })}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                  />
-                </div>
+                      <div className="form-group m-0">
+                        <label className="text-xs">Admin Initial Password *</label>
+                        <input
+                          type="password"
+                          required
+                          placeholder="Min 4 characters (e.g. AeroPass@2026)"
+                          value={clinicFormData.admin_password}
+                          onChange={(e) =>
+                            setClinicFormData({ ...clinicFormData, admin_password: e.target.value })
+                          }
+                          className="text-xs"
+                        />
+                      </div>
+                    </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Operating Hours
-                  </label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Mon-Sat: 09:00 AM - 08:00 PM"
-                    value={clinicFormData.operating_hours}
-                    onChange={(e) =>
-                      setClinicFormData({ ...clinicFormData, operating_hours: e.target.value })
-                    }
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                  />
-                </div>
-              </div>
-
-              {/* Primary Clinic Admin Initial Credentials */}
-              {!editingClinic && (
-                <div className="p-4 rounded-2xl bg-amber-50/70 border border-amber-200 space-y-3">
-                  <div className="flex items-center space-x-2">
-                    <FiKey className="text-amber-600" size={16} />
-                    <h4 className="text-xs font-bold text-amber-950 uppercase tracking-wider m-0">
-                      Primary Clinic Admin Account (Initial Login Credentials)
-                    </h4>
-                  </div>
-                  <p className="text-[11px] text-amber-900/80 m-0">
-                    SuperAdmin provisions the initial Admin ID & password so this clinic's manager can log in and manage doctors, staff, and appointments independently.
-                  </p>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Admin Login ID (Username) *
-                      </label>
+                    <div className="form-group m-0">
+                      <label className="text-xs">Admin Full Name (Optional)</label>
                       <input
                         type="text"
-                        required
-                        placeholder="e.g. agra_admin"
-                        value={clinicFormData.admin_username}
+                        placeholder="e.g. Dr. Rajesh / Clinic Manager"
+                        value={clinicFormData.admin_name}
                         onChange={(e) =>
-                          setClinicFormData({ ...clinicFormData, admin_username: e.target.value })
+                          setClinicFormData({ ...clinicFormData, admin_name: e.target.value })
                         }
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white text-slate-900"
-                      />
-                    </div>
-
-                    <div>
-                      <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                        Admin Initial Password *
-                      </label>
-                      <input
-                        type="password"
-                        required
-                        placeholder="Min 4 characters (e.g. AeroPass@2026)"
-                        value={clinicFormData.admin_password}
-                        onChange={(e) =>
-                          setClinicFormData({ ...clinicFormData, admin_password: e.target.value })
-                        }
-                        className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white text-slate-900"
+                        className="text-xs"
                       />
                     </div>
                   </div>
+                )}
 
-                  <div>
-                    <label className="block text-[11px] font-semibold text-slate-700 mb-1">
-                      Admin Full Name (Optional)
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Dr. Rajesh / Clinic Manager"
-                      value={clinicFormData.admin_name}
-                      onChange={(e) =>
-                        setClinicFormData({ ...clinicFormData, admin_name: e.target.value })
-                      }
-                      className="w-full px-3 py-2 rounded-xl border border-slate-300 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white text-slate-900"
-                    />
-                  </div>
+                <div className="flex items-center space-x-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="clinicActiveToggle"
+                    checked={clinicFormData.is_active}
+                    onChange={(e) =>
+                      setClinicFormData({ ...clinicFormData, is_active: e.target.checked })
+                    }
+                    className="h-4 w-4 text-[#254d90] rounded border-slate-300 focus:ring-[#254d90]"
+                  />
+                  <label
+                    htmlFor="clinicActiveToggle"
+                    className="text-xs font-semibold text-slate-700 cursor-pointer select-none"
+                  >
+                    Active Clinic (Accepting Appointments &amp; WhatsApp messages)
+                  </label>
                 </div>
-              )}
-
-              <div className="flex items-center space-x-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="clinicActiveToggle"
-                  checked={clinicFormData.is_active}
-                  onChange={(e) =>
-                    setClinicFormData({ ...clinicFormData, is_active: e.target.checked })
-                  }
-                  className="w-4 h-4 text-[#254d90] rounded border-slate-300 focus:ring-[#254d90]"
-                />
-                <label
-                  htmlFor="clinicActiveToggle"
-                  className="text-xs font-semibold text-slate-700 cursor-pointer"
-                >
-                  Active Clinic (Accepting Appointments & WhatsApp messages)
-                </label>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setIsClinicModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  className="btn-cancel"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={clinicSaving}
-                  className="portal-action-btn portal-action-btn-blue cursor-pointer"
+                  className="btn-submit"
                 >
-                  {clinicSaving ? (
-                    <span>Saving...</span>
-                  ) : (
-                    <>
-                      <FiCheck size={16} />
-                      <span>{editingClinic ? "Save Changes" : "Register Clinic"}</span>
-                    </>
-                  )}
+                  <FiCheck size={14} />
+                  <span>{clinicSaving ? "Saving..." : editingClinic ? "Save Changes" : "Register Clinic"}</span>
                 </button>
               </div>
             </form>
@@ -1269,110 +1426,106 @@ export default function SuperAdminView() {
 
       {/* CLINIC ADMIN CREDENTIALS MODAL */}
       {isCredsModalOpen && selectedClinicForCreds && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setIsCredsModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-            >
-              <FiX size={18} />
-            </button>
-
-            <div className="flex items-center space-x-3 mb-5">
-              <div className="portal-header-icon-box" style={{ background: "rgba(245, 158, 11, 0.12)", color: "#d97706" }}>
-                <FiKey size={24} />
-              </div>
+        <div className="modal-overlay" onClick={() => setIsCredsModalOpen(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: "520px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 m-0">Clinic Admin Credentials</h2>
-                <p className="text-xs text-slate-500 m-0 mt-0.5">
-                  Manage primary login ID and password for <strong>{selectedClinicForCreds.name}</strong> ({selectedClinicForCreds.code})
-                </p>
+                <h2>Clinic Admin Credentials</h2>
+                <div className="modal-kicker">
+                  Primary administrator account for <strong>{selectedClinicForCreds.name}</strong> ({selectedClinicForCreds.code})
+                </div>
               </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setIsCredsModalOpen(false)}
+              >
+                <FiX size={18} />
+              </button>
             </div>
 
-            {credsError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
-                <FiXCircle size={14} className="shrink-0" />
-                <span>{credsError}</span>
-              </div>
-            )}
+            <form onSubmit={handleSaveAdminCreds} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="modal-body space-y-4">
+                {credsError && (
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+                    <FiXCircle size={14} className="shrink-0" />
+                    <span>{credsError}</span>
+                  </div>
+                )}
 
-            {credsSuccess && (
-              <div className="mb-4 p-3 rounded-xl bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 flex items-center gap-2">
-                <FiCheckCircle size={14} className="shrink-0" />
-                <span>{credsSuccess}</span>
-              </div>
-            )}
+                {credsSuccess && (
+                  <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200 text-xs text-emerald-700 flex items-center gap-2">
+                    <FiCheckCircle size={14} className="shrink-0" />
+                    <span>{credsSuccess}</span>
+                  </div>
+                )}
 
-            <form onSubmit={handleSaveAdminCreds} className="space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Clinic Admin Login ID (Username) *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. agra_admin"
-                  value={credsFormData.username}
-                  onChange={(e) => setCredsFormData({ ...credsFormData, username: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white text-slate-900"
-                />
-                <span className="text-[10px] text-slate-500 mt-1 block">
-                  Used by the clinic manager to log into their clinic portal
-                </span>
+                <div className="form-group">
+                  <label>Clinic Admin Login ID (Username) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. agra_admin"
+                    value={credsFormData.username}
+                    onChange={(e) =>
+                      setCredsFormData({
+                        ...credsFormData,
+                        username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+                      })
+                    }
+                    className="font-mono"
+                  />
+                  <span className="text-[11px] text-slate-400 mt-0.5">
+                    Used by the clinic manager to access their clinic administration portal
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label>Admin Full Name</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. Clinic Administrator"
+                    value={credsFormData.name}
+                    onChange={(e) => setCredsFormData({ ...credsFormData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    {selectedClinicForCreds.admin_username ? "New Password *" : "Initial Password *"}
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Min 4 characters (e.g. ClinicPass@2026)"
+                    value={credsFormData.password}
+                    onChange={(e) => setCredsFormData({ ...credsFormData, password: e.target.value })}
+                  />
+                  <span className="text-[11px] text-slate-400 mt-0.5">
+                    Share these credentials securely with the clinic manager
+                  </span>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Admin Full Name
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. Clinic Administrator"
-                  value={credsFormData.name}
-                  onChange={(e) => setCredsFormData({ ...credsFormData, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {selectedClinicForCreds.admin_username ? "New Password *" : "Initial Password *"}
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Min 4 characters (e.g. ClinicPass@2026)"
-                  value={credsFormData.password}
-                  onChange={(e) => setCredsFormData({ ...credsFormData, password: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 text-xs focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 bg-white text-slate-900"
-                />
-                <span className="text-[10px] text-slate-500 mt-1 block">
-                  SuperAdmin sets this password. Share it securely with the clinic manager.
-                </span>
-              </div>
-
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setIsCredsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  className="btn-cancel"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={credsSaving}
-                  className="px-4 py-2 text-xs font-bold text-white bg-amber-600 hover:bg-amber-700 rounded-xl transition cursor-pointer flex items-center gap-1.5 shadow-sm"
+                  className="btn-submit"
                 >
-                  {credsSaving ? (
-                    <span>Saving...</span>
-                  ) : (
-                    <>
-                      <FiCheck size={14} />
-                      <span>Save Credentials</span>
-                    </>
-                  )}
+                  <FiCheck size={14} />
+                  <span>{credsSaving ? "Saving..." : "Save Credentials"}</span>
                 </button>
               </div>
             </form>
@@ -1382,113 +1535,109 @@ export default function SuperAdminView() {
 
       {/* CREATE / EDIT SUPERADMIN MODAL */}
       {isModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-md p-6 relative animate-in fade-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-            >
-              <FiX size={18} />
-            </button>
-
-            <div className="flex items-center space-x-3 mb-5">
-              <div className="portal-header-icon-box">
-                <FiShield size={24} />
-              </div>
+        <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: "520px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
               <div>
-                <h2 className="text-lg font-bold text-slate-900 m-0">
-                  {editingUser ? "Edit SuperAdmin" : "Create SuperAdmin"}
-                </h2>
-                <p className="text-xs text-slate-500 m-0 mt-0.5">
+                <h2>{editingUser ? "Edit SuperAdmin" : "Create SuperAdmin"}</h2>
+                <div className="modal-kicker">
                   Configure root platform master administrator account
-                </p>
+                </div>
               </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setIsModalOpen(false)}
+              >
+                <FiX size={18} />
+              </button>
             </div>
 
-            {formError && (
-              <div className="mb-4 p-3 rounded-xl bg-rose-50 border border-rose-200 text-xs text-rose-700">
-                {formError}
-              </div>
-            )}
+            <form onSubmit={handleSaveUser} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="modal-body space-y-4">
+                {formError && (
+                  <div className="p-3 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 font-medium">
+                    {formError}
+                  </div>
+                )}
 
-            <form onSubmit={handleSaveUser} className="space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  SuperAdmin Username *
-                </label>
-                <input
-                  type="text"
-                  required
-                  disabled={Boolean(editingUser)}
-                  placeholder="e.g. master_admin"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 font-mono focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900 disabled:bg-slate-100 disabled:text-slate-500"
-                />
+                <div className="form-group">
+                  <label>SuperAdmin Username (Login ID) *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. master_admin"
+                    value={formData.username}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+                      })
+                    }
+                    className="font-mono"
+                  />
+                  <span className="text-[11px] text-slate-400 mt-0.5">
+                    Unique platform master administrator login username
+                  </span>
+                </div>
+
+                <div className="form-group">
+                  <label>Full Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Platform Administrator"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+
+                <div className="form-group">
+                  <label>
+                    {editingUser ? "New Password (Leave blank to keep existing)" : "Password *"}
+                  </label>
+                  <input
+                    type="password"
+                    required={!editingUser}
+                    placeholder={editingUser ? "••••••••" : "Enter secure master password"}
+                    value={formData.password}
+                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  />
+                </div>
+
+                <div className="flex items-center space-x-2 pt-1">
+                  <input
+                    type="checkbox"
+                    id="userActiveToggle"
+                    checked={formData.is_active}
+                    onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
+                    className="h-4 w-4 text-[#254d90] rounded border-slate-300 focus:ring-[#254d90]"
+                  />
+                  <label htmlFor="userActiveToggle" className="text-xs font-semibold text-slate-700 cursor-pointer select-none">
+                    Active Administrator (Can sign in to SuperAdmin console)
+                  </label>
+                </div>
               </div>
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Platform Administrator"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  {editingUser ? "New Password (Leave blank to keep existing)" : "Password *"}
-                </label>
-                <input
-                  type="password"
-                  required={!editingUser}
-                  placeholder={editingUser ? "••••••••" : "Enter secure master password"}
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                />
-              </div>
-
-              <div className="flex items-center space-x-2 pt-1">
-                <input
-                  type="checkbox"
-                  id="userActiveToggle"
-                  checked={formData.is_active}
-                  onChange={(e) => setFormData({ ...formData, is_active: e.target.checked })}
-                  className="w-4 h-4 text-[#254d90] rounded border-slate-300 focus:ring-[#254d90]"
-                />
-                <label htmlFor="userActiveToggle" className="text-xs font-semibold text-slate-700 cursor-pointer">
-                  Active Administrator (Can sign in to SuperAdmin console)
-                </label>
-              </div>
-
-              <div className="flex items-center justify-end space-x-2 pt-3 border-t border-slate-100">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  className="btn-cancel"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={saving}
-                  className="portal-action-btn portal-action-btn-blue cursor-pointer"
+                  className="btn-submit"
                 >
-                  {saving ? (
-                    <span>Saving...</span>
-                  ) : (
-                    <>
-                      <FiCheck size={16} />
-                      <span>{editingUser ? "Save Changes" : "Create SuperAdmin"}</span>
-                    </>
-                  )}
+                  <FiCheck size={14} />
+                  <span>{saving ? "Saving..." : editingUser ? "Save Changes" : "Create SuperAdmin"}</span>
                 </button>
               </div>
             </form>
@@ -1498,56 +1647,57 @@ export default function SuperAdminView() {
 
       {/* RESET PASSWORD MODAL */}
       {passwordModalUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-2xl w-full max-w-sm p-6 relative animate-in fade-in zoom-in-95 duration-150">
-            <button
-              onClick={() => setPasswordModalUser(null)}
-              className="absolute top-5 right-5 p-1.5 rounded-full text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition cursor-pointer"
-            >
-              <FiX size={18} />
-            </button>
-
-            <div className="flex items-center space-x-3 mb-4">
-              <div className="w-10 h-10 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center">
-                <FiKey size={20} />
-              </div>
+        <div className="modal-overlay" onClick={() => setPasswordModalUser(null)}>
+          <div
+            className="modal-content"
+            style={{ maxWidth: "460px" }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
               <div>
-                <h3 className="text-base font-bold text-slate-900 m-0">Reset Password</h3>
-                <p className="text-xs text-slate-500 m-0 mt-0.5">
-                  SuperAdmin: <strong className="font-mono text-slate-800">{passwordModalUser.username}</strong>
-                </p>
+                <h2>Reset SuperAdmin Password</h2>
+                <div className="modal-kicker">
+                  Account: <strong>{passwordModalUser.username}</strong> ({passwordModalUser.name})
+                </div>
               </div>
+              <button
+                type="button"
+                className="modal-close"
+                onClick={() => setPasswordModalUser(null)}
+              >
+                <FiX size={18} />
+              </button>
             </div>
 
-            <form onSubmit={handleResetPassword} className="space-y-4 text-xs sm:text-sm">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  New Master Password
-                </label>
-                <input
-                  type="password"
-                  required
-                  placeholder="Enter new master password"
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full px-3.5 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-[#254d90]/20 focus:border-[#254d90] bg-white text-slate-900"
-                />
+            <form onSubmit={handleResetPassword} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
+              <div className="modal-body space-y-4">
+                <div className="form-group">
+                  <label>New Master Password *</label>
+                  <input
+                    type="password"
+                    required
+                    placeholder="Enter new master password (min 4 characters)"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center justify-end space-x-2 pt-2 border-t border-slate-100">
+              <div className="modal-footer">
                 <button
                   type="button"
                   onClick={() => setPasswordModalUser(null)}
-                  className="px-4 py-2 text-xs font-semibold text-slate-600 hover:text-slate-800 rounded-xl hover:bg-slate-100 transition cursor-pointer"
+                  className="btn-cancel"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={passwordSaving || !newPassword.trim()}
-                  className="portal-action-btn portal-action-btn-blue cursor-pointer"
+                  className="btn-submit"
                 >
-                  {passwordSaving ? "Updating..." : "Update Password"}
+                  <FiCheck size={14} />
+                  <span>{passwordSaving ? "Updating..." : "Update Password"}</span>
                 </button>
               </div>
             </form>
