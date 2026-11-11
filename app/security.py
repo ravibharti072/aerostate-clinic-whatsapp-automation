@@ -4,7 +4,7 @@ from collections import defaultdict
 from typing import Optional, Tuple
 import bcrypt
 from jose import JWTError, jwt
-from fastapi import Depends, HTTPException, Query, status
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from app.config import settings

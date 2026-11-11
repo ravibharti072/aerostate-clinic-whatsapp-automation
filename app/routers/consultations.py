@@ -1,8 +1,8 @@
 import json
 import re
 import datetime
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query
+from typing import Optional, Dict, Any
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db

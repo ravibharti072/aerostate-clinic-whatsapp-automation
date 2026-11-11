@@ -4,7 +4,6 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, or_
 from app.models import WhatsAppMessage, Patient, Appointment, Doctor
 from app.services.whatsapp import whatsapp_client
-from app.services.booking import booking_service
 from app.config import settings
 
 

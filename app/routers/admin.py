@@ -1,13 +1,12 @@
 import datetime
-import json
-from typing import List, Optional, Union, Any
+from typing import Optional, Union
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from app.database import get_db
-from app.models import Doctor, Appointment, Patient, ConversationSession, WhatsAppMessage, QueueEntry, StaffProfile, User, Clinic
+from app.models import Doctor, Appointment, Patient, WhatsAppMessage, QueueEntry, StaffProfile, User, Clinic
 from app.security import require_admin, require_superadmin, require_staff
 from app.services.booking import booking_service
 from app.services.whatsapp import whatsapp_client

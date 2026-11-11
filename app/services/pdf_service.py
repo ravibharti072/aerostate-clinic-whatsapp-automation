@@ -13,7 +13,6 @@ from reportlab.platypus import (
     HRFlowable,
 )
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-from reportlab.lib.units import inch
 from app.config import settings
 
 

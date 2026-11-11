@@ -1,7 +1,7 @@
 import datetime
 import json
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func

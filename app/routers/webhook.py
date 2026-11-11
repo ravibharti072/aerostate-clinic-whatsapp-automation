@@ -4,7 +4,7 @@ import hmac
 import hashlib
 import datetime
 import re
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from fastapi import APIRouter, Request, Response, Depends, Query
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
@@ -13,11 +13,11 @@ from app.database import get_db
 from app.services.whatsapp import whatsapp_client
 from app.services.booking import booking_service
 from app.services.messages import message_service
-from app.services.ai import ai_service, CLINICAL_SYMPTOM_MAP
+from app.services.ai import ai_service
 from app.services.reception import reception_service
 from app.services.faq import faq_service
 from app.services.safety import safety_service, MEDICAL_SAFETY_DISCLAIMER
-from app.models import Doctor, Clinic, Appointment, ProcessedWebhookMessage, ReceptionHandoverRequest, ClinicFAQ
+from app.models import Doctor, Clinic, Appointment, ProcessedWebhookMessage
 
 router = APIRouter(tags=["WhatsApp Webhook"])
 logger = logging.getLogger("webhook")

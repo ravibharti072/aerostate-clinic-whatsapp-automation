@@ -12,7 +12,7 @@ from zoneinfo import ZoneInfo
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 
-from app.models import Clinic, Patient, ReceptionHandoverRequest, User
+from app.models import Clinic, Patient, ReceptionHandoverRequest
 from app.services.booking import booking_service
 
 logger = logging.getLogger("aerostate_reception")

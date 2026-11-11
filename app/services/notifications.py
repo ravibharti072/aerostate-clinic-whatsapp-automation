@@ -1,7 +1,7 @@
 import datetime
 import logging
 from zoneinfo import ZoneInfo
-from typing import Optional, Dict, Any, List
+from typing import Optional, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 
@@ -283,9 +283,7 @@ class NotificationService:
             # Support calling from sync and async contexts
             try:
                 loop = asyncio.get_running_loop()
-                # If running loop exists, run as future or await if async caller
-                import inspect
-                # Run coroutine synchronously if inside sync test
+                # Run coroutine synchronously if inside sync execution
                 res = asyncio.run_coroutine_threadsafe(send_coro, loop).result(timeout=10.0)
             except RuntimeError:
                 res = asyncio.run(send_coro)

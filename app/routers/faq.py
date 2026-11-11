@@ -5,13 +5,13 @@ standard clinic questions, and querying against the FAQ matching engine.
 """
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Clinic, ClinicFAQ
+from app.models import Clinic
 from app.services.faq import faq_service
 
 logger = logging.getLogger("aerostate_faq_router")

@@ -1,11 +1,11 @@
 import datetime
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Body
+from typing import Optional
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
 
 from app.database import get_db
-from app.models import Clinic, NotificationLog, Appointment
+from app.models import Clinic, NotificationLog
 from app.services.notifications import notification_service, DEFAULT_TEMPLATES
 
 router = APIRouter(prefix="/api/notifications", tags=["Notifications & Reminders"])

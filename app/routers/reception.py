@@ -5,14 +5,14 @@ update statuses, and check reception availability.
 """
 
 import logging
-from typing import Optional, List, Dict, Any
+from typing import Optional, List
 from fastapi import APIRouter, Depends, HTTPException, Query
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
 from app.models import Clinic, ReceptionHandoverRequest
-from app.services.reception import reception_service, VALID_HANDOVER_STATUSES
+from app.services.reception import reception_service
 
 logger = logging.getLogger("aerostate_reception_router")
 

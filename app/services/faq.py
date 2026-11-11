@@ -7,7 +7,7 @@ and fallback receptionist handover for unanswered inquiries.
 
 import re
 import logging
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 
 from app.models import Clinic, Doctor, ClinicFAQ

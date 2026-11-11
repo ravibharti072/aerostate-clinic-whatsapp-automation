@@ -8,7 +8,7 @@ Implements conservative clinical safety mechanisms:
 
 import re
 import logging
-from typing import Optional, Tuple, Dict, Any, List
+from typing import Optional, Tuple
 from app.models import Clinic
 
 logger = logging.getLogger("aerostate_safety")

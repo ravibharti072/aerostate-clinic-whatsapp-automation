@@ -1,11 +1,10 @@
 import json
 import datetime
-from typing import List, Optional, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Response
+from typing import List, Optional, Dict
+from fastapi import APIRouter, Depends, HTTPException, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from app.database import get_db
-from app.config import settings
 import app.models as models
 from app.services.pdf_service import generate_diagnostic_receipt_pdf, generate_invoice_pdf, build_pdf_filename
 from app.security import require_admin, require_staff

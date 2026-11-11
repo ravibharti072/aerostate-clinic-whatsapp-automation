@@ -1,11 +1,11 @@
 import logging
-from typing import Optional, List, Dict, Any
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from typing import Optional, List
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Clinic, Appointment, Patient, Prescription, LabOrder, Payment, PatientFeedback, FollowUpSchedule
+from app.models import Clinic, Appointment, Patient, PatientFeedback
 from app.services.post_appointment import post_appointment_service
 from app.security import require_staff
 

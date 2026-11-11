@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from app.database import get_db
 from app.models import Clinic, Doctor, Appointment, User
-from app.security import require_superadmin, require_admin, get_current_user, hash_password
+from app.security import require_superadmin, get_current_user, hash_password
 from app.services.whatsapp import whatsapp_client
 from app.config import settings
 from app.routers.admin import update_env_variable
