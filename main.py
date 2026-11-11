@@ -497,8 +497,8 @@ async def background_reminder_worker():
             from app.services.notifications import notification_service
             db = SessionLocal()
             try:
-                notification_service.process_due_reminders(db)
-                notification_service.retry_failed_notifications(db)
+                await notification_service.process_due_reminders(db)
+                await notification_service.retry_failed_notifications(db)
             finally:
                 db.close()
         except asyncio.CancelledError:

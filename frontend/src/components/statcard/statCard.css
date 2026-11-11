@@ -84,19 +84,6 @@
 .trend-negative { background: #fef2f2; color: #dc2626; }
 .trend-neutral { background: #f1f5f9; color: #64748b; }
 
-/* --- Graph Styles (Edge to Edge) --- */
-.stat-sparkline {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  width: 100%;
-  height: 50%; /* Fills the bottom half of the card perfectly */
-  z-index: 1; 
-  pointer-events: none;
-  opacity: 0.8; /* Subtle blending */
-}
-
 /* --- Reusable Color Themes (Matching AeroState Logo Blue #254d90 & Teal #126868) --- */
 .bg-light-blue,
 .bg-light-brand-blue { 

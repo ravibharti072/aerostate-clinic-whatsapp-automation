@@ -219,7 +219,6 @@ export default function DashboardView({ onNavigate, onOpenBookModal }) {
           Icon={FiCalendar}
           colorTheme="brand-blue"
           trend={kpis?.today_appointments?.trend || `${todayAppts.length} today`}
-          trendData={kpis?.today_appointments?.sparkline || []}
         />
         <StatCard
           title="Live OPD Queue"
@@ -227,7 +226,6 @@ export default function DashboardView({ onNavigate, onOpenBookModal }) {
           Icon={FiClock}
           colorTheme="brand-teal"
           trend={`${queueStats?.in_consultation_count ?? 0} In Cabin`}
-          trendData={null}
         />
         <StatCard
           title="Today's Collections"
@@ -239,7 +237,6 @@ export default function DashboardView({ onNavigate, onOpenBookModal }) {
               ? `₹${Number(billingStats.pending_amount).toLocaleString("en-IN")} pending`
               : "All settled"
           }
-          trendData={null}
         />
         <StatCard
           title="Specialists on Duty"
@@ -247,7 +244,6 @@ export default function DashboardView({ onNavigate, onOpenBookModal }) {
           Icon={FiUserCheck}
           colorTheme="brand-teal"
           trend={`${occupiedCabinsCount} / ${totalCabinsCount} cabins busy`}
-          trendData={kpis?.active_doctors?.sparkline || []}
         />
       </div>
 

@@ -156,7 +156,7 @@ class NotificationService:
         return ctx
 
     @classmethod
-    def send_notification(
+    async def send_notification(
         cls,
         db: Session,
         clinic: Clinic,
@@ -184,7 +184,7 @@ class NotificationService:
         if appointment:
             slot_key = f"{appointment.appointment_date}_{appointment.start_time[:5]}"
 
-        # Duplicate check: check if already successfully sent for this appointment and slot
+        # Duplicate check: check if already successfully sent or recorded for this appointment and slot
         if appointment and slot_key:
             existing = (
                 db.query(NotificationLog)
@@ -195,11 +195,21 @@ class NotificationService:
                 )
                 .first()
             )
-            if existing and existing.status in ["SENT", "DELIVERED", "READ"]:
-                logger.info(
-                    f"Duplicate prevented: {notification_type} for appointment #{appointment.id} ({slot_key}) already sent (log #{existing.id})."
-                )
-                return None
+            if existing:
+                if not force:
+                    # Never send duplicate reminders unless explicitly forced
+                    logger.info(
+                        f"Duplicate prevented: {notification_type} for appointment #{appointment.id} ({slot_key}) "
+                        f"already exists with status='{existing.status}' (log #{existing.id})."
+                    )
+                    return None
+                elif existing.status in ["SENT", "DELIVERED", "READ"]:
+                    # Even when forced (retry), do not send if already successfully sent/delivered/read
+                    logger.info(
+                        f"Duplicate prevented: {notification_type} for appointment #{appointment.id} ({slot_key}) "
+                        f"already sent (log #{existing.id})."
+                    )
+                    return None
 
         # Choose template (clinic custom template or default)
         template_str = None
@@ -254,7 +264,6 @@ class NotificationService:
         whatsapp_token = clinic.whatsapp_token or settings.WHATSAPP_TOKEN
 
         try:
-            import asyncio
             buttons = None
             if use_buttons and appointment and notification_type.startswith("REMINDER_"):
                 buttons = [
@@ -264,7 +273,7 @@ class NotificationService:
                 ]
 
             if buttons:
-                send_coro = whatsapp_client.send_quick_reply_buttons(
+                res = await whatsapp_client.send_quick_reply_buttons(
                     to=recipient_phone,
                     body_text=message_body,
                     buttons=buttons,
@@ -273,34 +282,44 @@ class NotificationService:
                     token=whatsapp_token,
                 )
             else:
-                send_coro = whatsapp_client.send_text(
+                res = await whatsapp_client.send_text(
                     to=recipient_phone,
                     text=message_body,
                     phone_number_id=phone_number_id,
                     token=whatsapp_token,
                 )
 
-            # Support calling from sync and async contexts
-            try:
-                loop = asyncio.get_running_loop()
-                # Run coroutine synchronously if inside sync execution
-                res = asyncio.run_coroutine_threadsafe(send_coro, loop).result(timeout=10.0)
-            except RuntimeError:
-                res = asyncio.run(send_coro)
-
+            is_success = False
             meta_id = None
             if isinstance(res, dict):
                 msgs = res.get("messages", [])
-                if msgs and isinstance(msgs, list) and "id" in msgs[0]:
+                if msgs and isinstance(msgs, list) and len(msgs) > 0 and "id" in msgs[0]:
                     meta_id = msgs[0]["id"]
+                    is_success = True
+                elif res.get("simulated") or res.get("queued"):
+                    is_success = True
+                    meta_id = res.get("meta_id")
 
-            log_entry.status = "SENT"
-            log_entry.sent_at = datetime.datetime.utcnow()
-            log_entry.meta_message_id = meta_id
-            log_entry.error_message = None
-            db.commit()
-            logger.info(f"Notification {notification_type} sent successfully to {recipient_phone} (wamid: {meta_id}).")
-            return log_entry
+            if is_success:
+                log_entry.status = "SENT"
+                log_entry.sent_at = datetime.datetime.utcnow()
+                log_entry.meta_message_id = meta_id
+                log_entry.error_message = None
+                db.commit()
+                logger.info(f"Notification {notification_type} sent successfully to {recipient_phone} (wamid: {meta_id}).")
+                return log_entry
+            else:
+                err_msg = "WhatsApp dispatch returned failure"
+                if isinstance(res, dict) and "error" in res:
+                    err_msg = str(res["error"])
+                elif isinstance(res, dict) and "message" in res:
+                    err_msg = str(res["message"])
+                log_entry.status = "FAILED"
+                log_entry.retry_count += 1
+                log_entry.error_message = err_msg
+                db.commit()
+                logger.error(f"Notification {notification_type} failed for {recipient_phone}: {err_msg}")
+                return log_entry
 
         except Exception as e:
             logger.error(f"Failed to send notification {notification_type} to {recipient_phone}: {e}")
@@ -311,7 +330,7 @@ class NotificationService:
             return log_entry
 
     @classmethod
-    def process_due_reminders(cls, db: Session, now_override: Optional[datetime.datetime] = None) -> Dict[str, int]:
+    async def process_due_reminders(cls, db: Session, now_override: Optional[datetime.datetime] = None) -> Dict[str, int]:
         """
         Scans all active clinics and evaluates upcoming appointments for 24-hour and 2-hour reminders.
         Timezone-aware: converts current wall-clock time to each clinic's configured timezone.
@@ -354,7 +373,7 @@ class NotificationService:
 
                     # 1. 24-Hour Reminder Check (Target: within 24h, but more than 2h away)
                     if 2.0 < diff_hours <= 24.5 and clinic.reminder_24h_enabled:
-                        log = cls.send_notification(
+                        log = await cls.send_notification(
                             db=db,
                             clinic=clinic,
                             notification_type="REMINDER_24H",
@@ -366,7 +385,7 @@ class NotificationService:
 
                     # 2. 2-Hour Reminder Check (Target: between 0 and 2 hours before consultation)
                     elif 0.0 <= diff_hours <= 2.0 and clinic.reminder_2h_enabled:
-                        log = cls.send_notification(
+                        log = await cls.send_notification(
                             db=db,
                             clinic=clinic,
                             notification_type="REMINDER_2H",
@@ -383,13 +402,16 @@ class NotificationService:
         return stats
 
     @classmethod
-    def retry_failed_notifications(cls, db: Session) -> int:
+    async def retry_failed_notifications(cls, db: Session) -> int:
         """Retries notifications that encountered temporary failures and have remaining retries."""
+        # Minimum 15 minutes cooldown before retrying to avoid rapid retry spam
+        cutoff_time = datetime.datetime.utcnow() - datetime.timedelta(minutes=15)
         failed_logs = (
             db.query(NotificationLog)
             .filter(
                 NotificationLog.status == "FAILED",
                 NotificationLog.retry_count < NotificationLog.max_retries,
+                NotificationLog.created_at <= cutoff_time,
             )
             .all()
         )
@@ -406,7 +428,7 @@ class NotificationService:
                 db.commit()
                 continue
 
-            res = cls.send_notification(
+            res = await cls.send_notification(
                 db=db,
                 clinic=clinic,
                 notification_type=log.notification_type,
@@ -435,6 +457,36 @@ class NotificationService:
             db.commit()
             return True
         return False
+
+    @classmethod
+    def send_notification_sync(cls, *args, **kwargs) -> Optional[NotificationLog]:
+        """Synchronous wrapper for test fixtures and script callers."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    return pool.submit(lambda: asyncio.run(cls.send_notification(*args, **kwargs))).result(timeout=15.0)
+            return loop.run_until_complete(cls.send_notification(*args, **kwargs))
+        except Exception as e:
+            logger.error(f"send_notification_sync error: {e}")
+            return None
+
+    @classmethod
+    def process_due_reminders_sync(cls, *args, **kwargs) -> Dict[str, int]:
+        """Synchronous wrapper for test fixtures and script callers."""
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                import concurrent.futures
+                with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                    return pool.submit(lambda: asyncio.run(cls.process_due_reminders(*args, **kwargs))).result(timeout=30.0)
+            return loop.run_until_complete(cls.process_due_reminders(*args, **kwargs))
+        except Exception as e:
+            logger.error(f"process_due_reminders_sync error: {e}")
+            return {"reminders_24h_sent": 0, "reminders_2h_sent": 0, "errors": 1}
 
 
 notification_service = NotificationService()

@@ -29,7 +29,7 @@ class ClinicNotificationSettingsUpdate(BaseModel):
 
 
 @router.post("/run-reminders")
-def run_due_reminders(
+async def run_due_reminders(
     payload: Optional[ReminderProcessRequest] = None,
     db: Session = Depends(get_db),
 ):
@@ -38,7 +38,7 @@ def run_due_reminders(
     Supports time override for testing and simulation.
     """
     now_ov = payload.now_override if payload else None
-    stats = notification_service.process_due_reminders(db, now_override=now_ov)
+    stats = await notification_service.process_due_reminders(db, now_override=now_ov)
     return {
         "status": "success",
         "timestamp": datetime.datetime.utcnow().isoformat(),
@@ -47,9 +47,9 @@ def run_due_reminders(
 
 
 @router.post("/retry-failed")
-def retry_failed_notifications(db: Session = Depends(get_db)):
+async def retry_failed_notifications(db: Session = Depends(get_db)):
     """Retries transient failed notifications up to max retries."""
-    retried = notification_service.retry_failed_notifications(db)
+    retried = await notification_service.retry_failed_notifications(db)
     return {"status": "success", "retried_count": retried}
 
 
