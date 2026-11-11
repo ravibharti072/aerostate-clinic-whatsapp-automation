@@ -10,7 +10,32 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 
 import httpx
-from packaging import version as pkg_version
+try:
+    from packaging import version as pkg_version
+except ImportError:
+    class _FallbackVersion:
+        def __init__(self, v_str):
+            self.v_str = str(v_str).strip()
+            clean = self.v_str.lower().lstrip("v")
+            self._parts = []
+            for part in clean.split("."):
+                digits = "".join(filter(str.isdigit, part))
+                self._parts.append(int(digits) if digits else 0)
+
+        def __gt__(self, other):
+            if isinstance(other, _FallbackVersion):
+                return self._parts > other._parts
+            return False
+
+        def __str__(self):
+            return self.v_str
+
+    class _PkgVersion:
+        @staticmethod
+        def parse(v_str):
+            return _FallbackVersion(v_str)
+
+    pkg_version = _PkgVersion()
 
 from app.config import settings
 
