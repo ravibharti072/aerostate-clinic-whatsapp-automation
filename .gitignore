@@ -7,7 +7,7 @@ __pycache__/
 env/
 build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
@@ -46,10 +46,10 @@ logs/
 
 # Frontend build & dependencies
 frontend/node_modules/
-frontend/dist/
 frontend/.pnp
 frontend/.pnp.js
 frontend/coverage/
+!frontend/dist/**
 
 # Certificates & SSL keys
 *.pem
