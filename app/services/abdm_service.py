@@ -339,9 +339,10 @@ class ABDMService:
 
         if self.mock_mode:
             # Deterministic mock lookup
-            if "@" not in clean_query and len(re.sub(r"\D", "", clean_query)) == 14:
+            digits_only = re.sub(r"\D", "", clean_query)
+            if "@" not in clean_query and len(digits_only) == 14:
                 abha_num = clean_query
-                abha_addr = f"user{re.sub(r'\D', '', clean_query)[-4:]}@abdm"
+                abha_addr = f"user{digits_only[-4:]}@abdm"
             else:
                 abha_addr = clean_query if "@" in clean_query else f"{clean_query}@abdm"
                 abha_num = "91-4456-7890-1234"
