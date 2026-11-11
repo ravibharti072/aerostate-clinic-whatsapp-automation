@@ -1072,90 +1072,45 @@ def update_system_settings(
         db.commit()
         db.refresh(clinic)
 
-        # Synchronize runtime settings and .env with the database
-        if clinic.name:
-            settings.CLINIC_NAME = clinic.name
-            update_env_variable("CLINIC_NAME", clinic.name)
-        if clinic.address:
-            settings.CLINIC_ADDRESS = clinic.address
-            update_env_variable("CLINIC_ADDRESS", clinic.address)
-        if clinic.phone:
-            settings.CLINIC_PHONE = clinic.phone
-            update_env_variable("CLINIC_PHONE", clinic.phone)
-        if clinic.operating_hours:
-            settings.CLINIC_HOURS = clinic.operating_hours
-            update_env_variable("CLINIC_HOURS", clinic.operating_hours)
-        if clinic.phone_number_id:
-            settings.PHONE_NUMBER_ID = clinic.phone_number_id
-            update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id)
-        if clinic.whatsapp_token:
-            settings.WHATSAPP_TOKEN = clinic.whatsapp_token
-            update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
-        if clinic.verify_token:
-            settings.VERIFY_TOKEN = clinic.verify_token
-            update_env_variable("VERIFY_TOKEN", clinic.verify_token)
-    if payload.whatsapp_token and payload.whatsapp_token.strip():
-        token = payload.whatsapp_token.strip()
-        settings.WHATSAPP_TOKEN = token
-        update_env_variable("WHATSAPP_TOKEN", token)
+        # Database is the primary source of truth for each clinic.
+        # For the primary clinic (#1), best-effort update runtime settings and .env without blocking if unwritable.
+        if clinic.id == 1:
+            try:
+                if clinic.name:
+                    settings.CLINIC_NAME = clinic.name
+                    update_env_variable("CLINIC_NAME", clinic.name)
+                if clinic.address:
+                    settings.CLINIC_ADDRESS = clinic.address
+                    update_env_variable("CLINIC_ADDRESS", clinic.address)
+                if clinic.phone:
+                    settings.CLINIC_PHONE = clinic.phone
+                    update_env_variable("CLINIC_PHONE", clinic.phone)
+                if clinic.operating_hours:
+                    settings.CLINIC_HOURS = clinic.operating_hours
+                    update_env_variable("CLINIC_HOURS", clinic.operating_hours)
+                if clinic.phone_number_id:
+                    settings.PHONE_NUMBER_ID = clinic.phone_number_id
+                    update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id)
+                if clinic.whatsapp_token:
+                    settings.WHATSAPP_TOKEN = clinic.whatsapp_token
+                    update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
+                if clinic.verify_token:
+                    settings.VERIFY_TOKEN = clinic.verify_token
+                    update_env_variable("VERIFY_TOKEN", clinic.verify_token)
+            except Exception as env_ex:
+                logger.debug(f"Optional .env sync note: {env_ex}")
 
-    if payload.phone_number_id and payload.phone_number_id.strip():
-        phone_id = payload.phone_number_id.strip()
-        settings.PHONE_NUMBER_ID = phone_id
-        update_env_variable("PHONE_NUMBER_ID", phone_id)
-
-    if payload.verify_token and payload.verify_token.strip():
-        v_token = payload.verify_token.strip()
-        settings.VERIFY_TOKEN = v_token
-        update_env_variable("VERIFY_TOKEN", v_token)
-
-    if payload.clinic_name and payload.clinic_name.strip():
-        settings.CLINIC_NAME = payload.clinic_name.strip()
-        update_env_variable("CLINIC_NAME", settings.CLINIC_NAME)
-
-    if payload.clinic_tagline is not None:
-        settings.CLINIC_TAGLINE = payload.clinic_tagline.strip()
-        update_env_variable("CLINIC_TAGLINE", settings.CLINIC_TAGLINE)
-
-    if payload.clinic_reg_no is not None:
-        settings.CLINIC_REG_NO = payload.clinic_reg_no.strip()
-        update_env_variable("CLINIC_REG_NO", settings.CLINIC_REG_NO)
-
-    if payload.clinic_address and payload.clinic_address.strip():
-        settings.CLINIC_ADDRESS = payload.clinic_address.strip()
-        update_env_variable("CLINIC_ADDRESS", settings.CLINIC_ADDRESS)
-
-    if payload.clinic_phone and payload.clinic_phone.strip():
-        settings.CLINIC_PHONE = payload.clinic_phone.strip()
-        update_env_variable("CLINIC_PHONE", settings.CLINIC_PHONE)
-
-    if payload.clinic_email is not None:
-        settings.CLINIC_EMAIL = payload.clinic_email.strip()
-        update_env_variable("CLINIC_EMAIL", settings.CLINIC_EMAIL)
-
-    if payload.clinic_hours and payload.clinic_hours.strip():
-        settings.CLINIC_HOURS = payload.clinic_hours.strip()
-        update_env_variable("CLINIC_HOURS", settings.CLINIC_HOURS)
-
-    if payload.opd_slot_duration is not None:
-        settings.OPD_SLOT_DURATION = int(payload.opd_slot_duration)
-        update_env_variable("OPD_SLOT_DURATION", str(settings.OPD_SLOT_DURATION))
-
-    if payload.checkin_grace_period is not None:
-        settings.CHECKIN_GRACE_PERIOD = int(payload.checkin_grace_period)
-        update_env_variable("CHECKIN_GRACE_PERIOD", str(settings.CHECKIN_GRACE_PERIOD))
-
-    if payload.emergency_tat is not None:
-        settings.EMERGENCY_TAT = int(payload.emergency_tat)
-        update_env_variable("EMERGENCY_TAT", str(settings.EMERGENCY_TAT))
-
-    if payload.lab_tat_standard is not None:
-        settings.LAB_TAT_STANDARD = int(payload.lab_tat_standard)
-        update_env_variable("LAB_TAT_STANDARD", str(settings.LAB_TAT_STANDARD))
-
-    if payload.followup_days is not None:
-        settings.FOLLOWUP_DAYS = int(payload.followup_days)
-        update_env_variable("FOLLOWUP_DAYS", str(settings.FOLLOWUP_DAYS))
+        # Update operational policies if provided
+        if payload.opd_slot_duration is not None:
+            settings.OPD_SLOT_DURATION = int(payload.opd_slot_duration)
+        if payload.checkin_grace_period is not None:
+            settings.CHECKIN_GRACE_PERIOD = int(payload.checkin_grace_period)
+        if payload.emergency_tat is not None:
+            settings.EMERGENCY_TAT = int(payload.emergency_tat)
+        if payload.lab_tat_standard is not None:
+            settings.LAB_TAT_STANDARD = int(payload.lab_tat_standard)
+        if payload.followup_days is not None:
+            settings.FOLLOWUP_DAYS = int(payload.followup_days)
 
     return {"message": "Settings updated successfully", "status": "ok"}
 
@@ -1165,12 +1120,44 @@ class MetaTestRequest(BaseModel):
     whatsapp_token: Optional[str] = None
 
 
-@router.post("/settings/test-meta", dependencies=[Depends(require_admin)])
-async def test_meta_connection(payload: Optional[MetaTestRequest] = None):
-    """Live connectivity verification with Meta WhatsApp Cloud API."""
+@router.post("/settings/test-meta")
+async def test_meta_connection(
+    payload: Optional[MetaTestRequest] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    """Live connectivity verification with Meta WhatsApp Cloud API for current clinic."""
+    clinic = None
+    if current_user.clinic_id:
+        clinic = db.query(Clinic).filter(Clinic.id == current_user.clinic_id).first()
+    if not clinic:
+        clinic = db.query(Clinic).order_by(Clinic.id.asc()).first()
+
     pid = (payload.phone_number_id.strip() if payload and payload.phone_number_id else None)
     token = (payload.whatsapp_token.strip() if payload and payload.whatsapp_token else None)
-    return await whatsapp_client.test_connection(phone_number_id=pid, token=token)
+
+    # If token is masked, placeholder, or empty, use the clinic's stored token from database
+    if (not token or "••••" in token or token.startswith("YOUR_")) and clinic and clinic.whatsapp_token:
+        token = clinic.whatsapp_token
+    elif not token:
+        token = settings.WHATSAPP_TOKEN
+
+    if not pid and clinic and clinic.phone_number_id:
+        pid = clinic.phone_number_id
+    elif not pid:
+        pid = settings.PHONE_NUMBER_ID
+
+    res = await whatsapp_client.test_connection(phone_number_id=pid, token=token)
+
+    # If connection was verified successfully and display phone number returned, persist to clinic
+    if isinstance(res, dict) and res.get("success") and clinic and res.get("display_phone_number"):
+        try:
+            clinic.display_phone_number = res.get("display_phone_number")
+            db.commit()
+        except Exception:
+            db.rollback()
+
+    return res
 
 
 # ----------------------------------------------------
@@ -1202,11 +1189,17 @@ def get_patient_messages(phone: str, db: Session = Depends(get_db)):
 
 
 @router.post("/messages/send")
-async def send_clinic_message(payload: SendMessageRequest, db: Session = Depends(get_db)):
+async def send_clinic_message(
+    payload: SendMessageRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
     """Sends a manual WhatsApp reply to a patient directly from the clinic dashboard."""
     if not payload.phone or not payload.text.strip():
         raise HTTPException(status_code=400, detail="Phone and text are required")
-    res = await message_service.send_manual_reply(db, payload.phone, payload.text)
+    res = await message_service.send_manual_reply(
+        db, payload.phone, payload.text, user_name=current_user.name or "Clinic Reception", clinic_id=current_user.clinic_id
+    )
     return res
 
 

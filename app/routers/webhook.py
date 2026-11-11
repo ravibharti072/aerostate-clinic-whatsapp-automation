@@ -51,7 +51,22 @@ class ClinicContext:
         if clinic_id:
             self.clinic = db.query(Clinic).filter(Clinic.id == clinic_id, Clinic.is_active == True).first()
         elif phone_number_id:
-            self.clinic = db.query(Clinic).filter(Clinic.phone_number_id == phone_number_id, Clinic.is_active == True).first()
+            clean_pid = str(phone_number_id).strip()
+            self.clinic = db.query(Clinic).filter(Clinic.phone_number_id == clean_pid, Clinic.is_active == True).first()
+            if not self.clinic and settings.PHONE_NUMBER_ID and clean_pid == str(settings.PHONE_NUMBER_ID).strip():
+                self.clinic = db.query(Clinic).filter(Clinic.is_active == True).order_by(Clinic.id.asc()).first()
+            if not self.clinic:
+                active_clinics = db.query(Clinic).filter(Clinic.is_active == True).all()
+                if len(active_clinics) == 1 and not active_clinics[0].phone_number_id:
+                    # Single active clinic without phone_number_id yet; auto-bind it
+                    single_c = active_clinics[0]
+                    single_c.phone_number_id = clean_pid
+                    try:
+                        db.commit()
+                        db.refresh(single_c)
+                    except Exception:
+                        db.rollback()
+                    self.clinic = single_c
 
         # Strict clinic validation: NEVER fall back to another clinic if unmatched
         self.is_valid: bool = self.clinic is not None

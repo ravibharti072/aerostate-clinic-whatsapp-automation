@@ -605,24 +605,27 @@ def update_clinic(
     # Synchronize primary clinic info to settings and .env
     first_clinic = db.query(Clinic).order_by(Clinic.id.asc()).first()
     if first_clinic and first_clinic.id == clinic.id:
-        if clinic.name:
-            settings.CLINIC_NAME = clinic.name
-            update_env_variable("CLINIC_NAME", clinic.name)
-        if clinic.address:
-            settings.CLINIC_ADDRESS = clinic.address
-            update_env_variable("CLINIC_ADDRESS", clinic.address)
-        if clinic.phone:
-            settings.CLINIC_PHONE = clinic.phone
-            update_env_variable("CLINIC_PHONE", clinic.phone)
-        if clinic.operating_hours:
-            settings.CLINIC_HOURS = clinic.operating_hours
-            update_env_variable("CLINIC_HOURS", clinic.operating_hours)
-        if clinic.phone_number_id is not None:
-            settings.PHONE_NUMBER_ID = clinic.phone_number_id or ""
-            update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id or "")
-        if clinic.whatsapp_token:
-            settings.WHATSAPP_TOKEN = clinic.whatsapp_token
-            update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
+        try:
+            if clinic.name:
+                settings.CLINIC_NAME = clinic.name
+                update_env_variable("CLINIC_NAME", clinic.name)
+            if clinic.address:
+                settings.CLINIC_ADDRESS = clinic.address
+                update_env_variable("CLINIC_ADDRESS", clinic.address)
+            if clinic.phone:
+                settings.CLINIC_PHONE = clinic.phone
+                update_env_variable("CLINIC_PHONE", clinic.phone)
+            if clinic.operating_hours:
+                settings.CLINIC_HOURS = clinic.operating_hours
+                update_env_variable("CLINIC_HOURS", clinic.operating_hours)
+            if clinic.phone_number_id is not None:
+                settings.PHONE_NUMBER_ID = clinic.phone_number_id or ""
+                update_env_variable("PHONE_NUMBER_ID", clinic.phone_number_id or "")
+            if clinic.whatsapp_token:
+                settings.WHATSAPP_TOKEN = clinic.whatsapp_token
+                update_env_variable("WHATSAPP_TOKEN", clinic.whatsapp_token)
+        except Exception:
+            pass
 
     return {"success": True, "message": f"Clinic '{clinic.name}' updated successfully"}
 
@@ -666,4 +669,10 @@ async def test_clinic_meta_connection(
     token = clinic.whatsapp_token or settings.WHATSAPP_TOKEN
 
     result = await whatsapp_client.test_connection(phone_number_id=pid, token=token)
+    if isinstance(result, dict) and result.get("success") and result.get("display_phone_number"):
+        try:
+            clinic.display_phone_number = result.get("display_phone_number")
+            db.commit()
+        except Exception:
+            db.rollback()
     return result

@@ -251,14 +251,21 @@ class MessageService:
 
     @staticmethod
     async def send_manual_reply(
-        db: Session, phone: str, text: str, user_name: str = "Clinic Reception"
+        db: Session, phone: str, text: str, user_name: str = "Clinic Reception", clinic_id: Optional[int] = None
     ) -> Dict[str, Any]:
         """Clinic staff manually sends a WhatsApp reply to a patient."""
+        from app.models import Clinic
         clean_phone = phone.strip()
         clean_text = text.strip()
 
-        # Send via WhatsApp client
-        res = await whatsapp_client.send_text(to=clean_phone, text=clean_text)
+        clinic = db.query(Clinic).filter(Clinic.id == clinic_id).first() if clinic_id else None
+        phone_number_id = clinic.phone_number_id if clinic and clinic.phone_number_id else None
+        token = clinic.whatsapp_token if clinic and clinic.whatsapp_token else None
+
+        # Send via WhatsApp client using clinic dedicated credentials
+        res = await whatsapp_client.send_text(
+            to=clean_phone, text=clean_text, phone_number_id=phone_number_id, token=token
+        )
         is_queued = bool(res and res.get("status") == "queued_offline")
         body_to_log = f"[Queued Offline] {clean_text}" if is_queued else clean_text
 
