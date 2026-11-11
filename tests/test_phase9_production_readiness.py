@@ -496,12 +496,12 @@ def test_security_invalid_and_missing_meta_signatures_rejected():
     payload_bytes = json.dumps(payload).encode("utf-8")
 
     # 1. Missing signature
-    with patch.object(settings, "META_APP_SECRET", TEST_APP_SECRET):
+    with patch.object(settings, "META_APP_SECRET", TEST_APP_SECRET), patch.object(settings, "ALLOW_INSECURE_WEBHOOKS", False):
         r_missing = client.post("/webhook", data=payload_bytes, headers={"Content-Type": "application/json"})
         assert r_missing.status_code == 403
 
     # 2. Tampered signature
-    with patch.object(settings, "META_APP_SECRET", TEST_APP_SECRET):
+    with patch.object(settings, "META_APP_SECRET", TEST_APP_SECRET), patch.object(settings, "ALLOW_INSECURE_WEBHOOKS", False):
         r_bad = client.post(
             "/webhook",
             data=payload_bytes,
