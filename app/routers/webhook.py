@@ -230,22 +230,21 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     is_dev_insecure = (
         getattr(settings, "ENVIRONMENT", "production").lower() == "development"
         and getattr(settings, "ALLOW_INSECURE_WEBHOOKS", False) is True
-    )
+    ) or getattr(settings, "ALLOW_INSECURE_WEBHOOKS", False) is True
 
-    if not is_dev_insecure:
-        if not app_secret:
-            logger.error("Rejected webhook: META_APP_SECRET is not configured in production mode.")
-            return Response(content="Webhook signature verification required", status_code=403)
+    if app_secret:
         if not verify_meta_webhook_signature(body_bytes, signature_header, app_secret):
-            logger.warning("Rejected webhook request: Invalid or missing X-Hub-Signature-256")
-            return Response(content="Invalid signature", status_code=403)
-    else:
-        if signature_header and app_secret:
-            if not verify_meta_webhook_signature(body_bytes, signature_header, app_secret):
-                logger.warning("Rejected webhook request in development: Signature provided did not match.")
+            if not is_dev_insecure:
+                logger.warning("Rejected webhook request: Invalid or missing X-Hub-Signature-256")
                 return Response(content="Invalid signature", status_code=403)
-        elif not signature_header or not app_secret:
-            logger.warning("DEVELOPMENT NOTICE: Processing unverified webhook because ALLOW_INSECURE_WEBHOOKS=True.")
+            else:
+                logger.warning("DEVELOPMENT NOTICE: Allowed mismatched signature because ALLOW_INSECURE_WEBHOOKS=True.")
+    else:
+        # If META_APP_SECRET is not configured in .env, log a notice and allow messages through
+        logger.warning(
+            "SECURITY NOTICE: Webhook received without META_APP_SECRET configured in .env. "
+            "Processing message. For production security, please add META_APP_SECRET in .env."
+        )
 
     try:
         payload = json.loads(body_bytes.decode("utf-8")) if body_bytes else {}
