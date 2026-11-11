@@ -575,7 +575,14 @@ def finish_consultation(entry_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Queue entry not found")
 
     entry.status = "COMPLETED"
-    if entry.appointment:
+    if entry.appointment_id:
+        from app.services.post_appointment import post_appointment_service
+        try:
+            post_appointment_service.complete_appointment(db, entry.appointment_id, completed_by=getattr(current_user, 'username', 'Queue Staff'))
+        except Exception as e:
+            if entry.appointment:
+                entry.appointment.status = "COMPLETED"
+    elif entry.appointment:
         entry.appointment.status = "COMPLETED"
 
     db.commit()
@@ -634,7 +641,14 @@ async def finish_and_call_next(
 
     # 1. Complete current patient
     entry.status = "COMPLETED"
-    if entry.appointment:
+    if entry.appointment_id:
+        from app.services.post_appointment import post_appointment_service
+        try:
+            post_appointment_service.complete_appointment(db, entry.appointment_id, completed_by=getattr(current_user, 'username', 'Queue Staff'))
+        except Exception as e:
+            if entry.appointment:
+                entry.appointment.status = "COMPLETED"
+    elif entry.appointment:
         entry.appointment.status = "COMPLETED"
 
     cabin_to_use = (payload.cabin if payload and payload.cabin else entry.cabin) or "Cabin 1"

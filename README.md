@@ -1,28 +1,72 @@
-# 🏥 Aerostate Clinic WhatsApp Automation
+# 🏥 Aerostate Clinic WhatsApp Automation ERP
 
-An automated WhatsApp appointment scheduling and booking system tailored for medical clinics, dental practices, consultants, and service businesses.
+An enterprise-ready, multi-tenant automated WhatsApp appointment scheduling and clinic ERP platform tailored for medical clinics, healthcare networks, polyclinics, dental practices, and diagnostic centers.
 
-Built with **FastAPI**, **Meta WhatsApp Cloud API**, **SQLAlchemy (SQLite / PostgreSQL)**, and optional **Google Gemini AI**.
+Built with **FastAPI**, **Meta WhatsApp Cloud API (Graph API v21.0)**, **SQLAlchemy (SQLite / PostgreSQL)**, **Razorpay Payment Gateway**, **Ayushman Bharat Digital Mission (ABDM/ABHA)** integration, and optional **Google Gemini AI**.
 
 ---
 
-## 🌟 Key Features
+## 🌟 Key Architecture & Capabilities
 
-1. **Self-Service Appointment Booking:**
-   - Interactive WhatsApp buttons and list menus (eliminates customer typing mistakes).
-   - Step 1: Select Specialist / Doctor.
-   - Step 2: Select Available Date.
-   - Step 3: Select Available Time Slot.
-   - Instant Confirmation with appointment details and clinic address.
-2. **Prevent Double Booking:**
-   - Real-time slot calculation based on doctor working hours and existing confirmed bookings.
-3. **Appointment Management:**
-   - Patients can send `my appointments` to view upcoming visits and cancel with 1 click.
-4. **Clinic Admin API:**
-   - REST endpoints at `/admin/appointments` and `/admin/doctors` to view and manage appointments.
-   - Interactive Swagger API docs available at `http://localhost:8000/docs`.
-5. **100% Free Tier Compatible:**
-   - Uses Meta's 1,000 free monthly service conversations, local/Supabase database, and free Cloudflare/ngrok tunnels.
+### 1. Multi-Tenant Clinic Isolation
+- **Strict Webhook Clinic Resolution:** Maps incoming Meta `phone_number_id` directly to configured clinic tenants. Zero cross-clinic fallback; unrecognized phone IDs are safely rejected with sanitized logging.
+- **Data Scoping:** Every doctor, appointment, patient contact, invoice, payment, FAQ, and conversation session is strictly scoped to its clinic tenant.
+- **Isolated Policies:** Each clinic independently configures consultation fees, operating hours, reception working hours, payment policies (`PAY_AT_CLINIC`, `ONLINE_REQUIRED`, `ADVANCE_PAYMENT`), reminder templates, and post-appointment features.
+
+### 2. Complete WhatsApp Conversational Navigation
+- **Interactive List Menus & Quick Reply Buttons:** Replaces fragile text prompts with intuitive WhatsApp native lists:
+  - 📅 **Book Appointment** (Myself or Someone Else)
+  - 🔄 **Reschedule Appointment** (Atomic slot swapping with 2-hour cutoff rule)
+  - ❌ **Cancel Appointment** (Confirmation step, slot release, cancellation cutoff policy)
+  - 📋 **My Appointments** (Clinic-scoped upcoming visit details, payment status, doctor names)
+  - 🏥 **Doctors & Clinic Info** (Specialties, schedules, timings, address)
+  - 💬 **Talk to Receptionist** (Staff handover dispatching with working-hours detection)
+- **Natural Language & Text Command Parser:** Case-insensitive, fault-tolerant keyword recognition (`HI`, `HELLO`, `MENU`, `BOOK`, `RESCHEDULE`, `CANCEL`, `DOCTORS`, `HELP`, `HUMAN`).
+- **Graceful Error Recovery:** Unexpected messages during active flows guide patients back without session breakage; typing `MENU` or `CANCEL` cleanly resets state.
+
+### 3. Patient Details Collection & Atomic Slot Booking
+- Multi-step booking collects target (*Myself* vs *Someone Else*), full name, optional reason for consultation, or symptom triage.
+- **Double-Booking Prevention:** Concurrency-safe slot reservation. If a slot is taken before final confirmation, the patient is alerted and presented with alternative available slots.
+- **Review & Confirm Step:** Complete appointment summary (Doctor, Date, Time, Fee, Clinic Address) presented before database commit.
+
+### 4. Medical Safety & Clinical Triage
+- **Strict Non-Diagnostic Guardrails:** The automated system does **not** diagnose conditions, prescribe medications, or recommend drug dosages.
+- **Prominent Medical Disclaimers:** Accompanies all symptom triage suggestions.
+- **Emergency Red Flag Escalation:** Automatic pattern matching detects life-threatening emergency symptoms (severe chest pain, breathing difficulty, stroke signs, sudden loss of consciousness, heavy hemorrhage) and halts booking to display immediate emergency contact numbers and hospital directions.
+- **ABHA / ABDM Verification:** Ayushman Bharat Health Account validation with OTP simulation and clinic registry linking.
+
+### 5. Automated Reminders & Timezone-Aware Background Scheduler
+- Scheduled notifications at **24 hours** and **2 hours** before consultation.
+- Clinic administrators can independently toggle 24h and 2h reminders.
+- **Duplicate Prevention:** Persistent tracking in `NotificationLog` prevents repeat dispatches for identical slot bookings.
+- **Automatic Retries:** Temporary Meta API connectivity failures are marked `FAILED` with retry tracking and recovered by `retry_failed_notifications()`.
+- **Cancellation & Reschedule Sync:** Reminders are automatically rescheduled when an appointment date/time changes, and silenced if cancelled.
+
+### 6. Post-Appointment Care & Secure Patient Document Portal
+- **Consultation Completion:** Clinic staff explicitly mark visits `COMPLETED` in the ERP.
+- **Feedback Collection:** WhatsApp star rating (`1` to `5`) with optional written patient reviews.
+- **Expiring Document Access Tokens:** Cryptographically random, URL-safe expiring tokens for digital prescriptions and lab reports:
+  - Tamper-proof validation (HTTP 404 on tampered tokens).
+  - Enforced expiration (HTTP 410 when token expires).
+  - Cross-patient isolation (HTTP 403 on mismatched patient requests).
+- **Automated Payment Receipts:** Generated and dispatched immediately upon verified online capture or counter payment.
+
+---
+
+## 🔒 Security Hardening & Zero-Trust Safeguards
+
+1. **Meta Webhook Cryptographic Verification:**
+   - Raw incoming request payload verified using HMAC SHA-256 against `META_APP_SECRET`.
+   - Constant-time string comparison protects against timing attacks.
+   - Missing or tampered signatures are rejected with **HTTP 403 Forbidden**.
+2. **Webhook Message Idempotency:**
+   - Incoming Meta message IDs (`wamid`) recorded in `ProcessedWebhookMessage`. Redelivered webhooks are acknowledged without duplicate side effects.
+3. **Razorpay Webhook Verification:**
+   - Validates `X-Razorpay-Signature` against `RAZORPAY_WEBHOOK_SECRET` before updating invoice or appointment status.
+4. **Session Expiration:**
+   - Conversation sessions expire after 30 minutes of inactivity, resetting abandoned sessions safely.
+5. **No Data Leakage:**
+   - Error messages are sanitized and never leak database schemas, clinic IDs, or internal stack traces.
 
 ---
 
@@ -30,116 +74,155 @@ Built with **FastAPI**, **Meta WhatsApp Cloud API**, **SQLAlchemy (SQLite / Post
 
 ```
 aerostate-clinic-whatsapp-automation/
-│
 ├── app/
-│   ├── config.py              # Configuration & environment variables
-│   ├── database.py            # SQLAlchemy database engine
-│   ├── models.py              # Patient, Doctor, Appointment, Session models
+│   ├── config.py                 # Pydantic environment configuration & defaults
+│   ├── database.py               # SQLAlchemy database session & engine
+│   ├── models.py                 # Complete DB schema (Clinic, Doctor, Appointment, Feedback, etc.)
 │   ├── routers/
-│   │   ├── webhook.py         # Meta Webhook GET (verify) & POST (messages)
-│   │   └── admin.py           # Clinic staff admin endpoints
+│   │   ├── webhook.py            # Meta WhatsApp Webhook, lists, buttons & flows
+│   │   ├── admin.py              # Clinic staff admin & appointment management
+│   │   ├── payments.py           # Razorpay payment orders & webhooks
+│   │   ├── post_appointment.py   # Completion, feedback, follow-ups & document portal
+│   │   ├── queue.py              # Real-time OPD queue management
+│   │   ├── abha.py               # ABDM & ABHA verification endpoints
+│   │   └── analytics.py          # Operational KPIs & metrics
 │   └── services/
-│       ├── whatsapp.py        # WhatsApp Cloud API client (text, buttons, lists)
-│       ├── booking.py         # Slot availability, scheduling, cancellations
-│       └── ai.py              # Optional Gemini AI intent parser
-│
-├── main.py                    # FastAPI server entrypoint & seed data
-├── requirements.txt           # Python dependencies
-├── .env.example               # Environment variables template
-└── README.md                  # Complete documentation
+│       ├── whatsapp.py           # Meta Cloud API client (text, buttons, list menus)
+│       ├── booking.py            # Slot calculations, session state machine, concurrency locks
+│       ├── notifications.py      # Scheduled 24h/2h reminders & retry dispatcher
+│       ├── post_appointment.py   # Feedback collection, document access grants & receipts
+│       ├── razorpay_service.py   # Razorpay client & signature verification
+│       ├── safety.py             # Medical disclaimers & emergency triage red flags
+│       └── reception.py          # Receptionist handover requests & working hours
+├── tests/                        # 97 End-to-End Automated Tests (Phases 1 - 9)
+│   ├── test_phase1_security_reliability.py
+│   ├── test_phase2_menu_navigation.py
+│   ├── test_phase3_patient_booking.py
+│   ├── test_phase4_reschedule_cancel.py
+│   ├── test_phase5_reminders_notifications.py
+│   ├── test_phase6_reception_and_faq.py
+│   ├── test_phase7_symptom_safety_abha.py
+│   ├── test_phase8_post_appointment.py
+│   └── test_phase9_production_readiness.py
+├── main.py                       # FastAPI application setup, router mounting & DB migrations
+├── create_superadmin.py          # CLI utility to create initial admin credentials
+├── requirements.txt              # Production Python dependencies
+├── .env.example                  # Environment variables template
+└── README.md                     # Complete production guide
 ```
 
 ---
 
-## 🚀 Quick Start Guide
+## 🚀 Quick Start & Deployment Guide
 
-### 1. Install Dependencies
-Open your terminal in this directory and run:
+### 1. Prerequisites
+- Python 3.10+ (tested through Python 3.14)
+- PostgreSQL (recommended for production) or SQLite (default)
+- Meta Business Account with WhatsApp Cloud API access
+- Razorpay account (for online payment collection)
 
+### 2. Installation
 ```bash
+git clone https://github.com/ravibharti072/aerostate-clinic-whatsapp-automation.git
+cd aerostate-clinic-whatsapp-automation
+python -m venv venv
+# Windows:
+.\venv\Scripts\activate
+# Linux/macOS:
+source venv/bin/activate
+
 pip install -r requirements.txt
 ```
 
-### 2. Configure Environment (`.env`)
-The `.env` file is pre-configured with local defaults. When ready to connect to live WhatsApp, update your credentials:
-
+### 3. Environment Configuration (`.env`)
+Copy the sample environment file:
+```bash
+cp .env.example .env
+```
+Key production variables:
 ```env
-WHATSAPP_TOKEN=your_meta_token_here
-PHONE_NUMBER_ID=your_meta_phone_number_id_here
+# Meta WhatsApp Cloud API
+WHATSAPP_TOKEN=EAAB...
+PHONE_NUMBER_ID=1005...
 VERIFY_TOKEN=aerostate_secret_verify_token_2026
+META_APP_SECRET=a1b2c3d4...
+ENVIRONMENT=production
+ALLOW_INSECURE_WEBHOOKS=false
+WHATSAPP_SESSION_TIMEOUT_MINUTES=30
+
+# Security
+SECRET_KEY=generate_with_python_secrets_token_hex_32
+
+# Database (PostgreSQL recommended for production)
+DATABASE_URL=postgresql://clinic_user:strong_password@localhost:5432/clinic_erp
+
+# Razorpay Payment Gateway
+RAZORPAY_KEY_ID=rzp_live_...
+RAZORPAY_KEY_SECRET=...
+RAZORPAY_WEBHOOK_SECRET=...
+RAZORPAY_ENABLED=true
 ```
 
-### 3. Initialize SuperAdmin & Start Server
-Create your master SuperAdmin account:
+### 4. Create SuperAdmin Account
 ```bash
-python create_superadmin.py superadmin Admin@123 "Clinic SuperAdmin"
+python create_superadmin.py superadmin "YourStrongPassword123!" "Clinic SuperAdmin"
 ```
 
-Then launch the production server:
+### 5. Launch the Server
 ```bash
-python main.py
+uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
 ```
-* **Production Web Suite & Login:** `http://localhost:8000`
-* **Swagger API Documentation:** `http://localhost:8000/docs`
-
-> [!IMPORTANT]
-> **Default SuperAdmin Credentials:**
-> - **User ID:** `superadmin`
-> - **Password:** `Admin@123`
->
-> Log in as SuperAdmin to access the **Staff & User Access** portal, where you can create normal staff accounts (Receptionists, Doctors, Managers) with their own credentials.
-
-> [!NOTE]
-> All dummy test records have been eliminated. Doctors, working schedules, and patient appointments are now 100% created and managed by you directly via the reception dashboard, SuperAdmin portal, or live Meta WhatsApp messages.
-
-### 4. Interactive WhatsApp Simulator & Dashboard
-Open `http://localhost:8000` in your browser. You get:
-1. **📊 Operational Dashboard:** Live KPIs (Today's visits, confirmed/completed/cancelled bookings, active doctors).
-2. **📅 Appointments Roster:** Search by patient name/phone, filter by date/doctor/status, and update statuses.
-3. **👨‍⚕️ Doctors & Specialties:** Add new doctors, configure working hours/days, and customize slot lengths (15, 30, 45, 60 mins).
-4. **👥 Patient Directory:** Track patient history and total bookings.
-5. **💬 WhatsApp Simulator:** A realistic WhatsApp phone interface to test the bot live (sending "Hi", selecting doctors, choosing dates and slots, or viewing appointments) right in your browser!
-6. **⚙️ Settings & Webhooks:** Copy-paste ready Webhook URLs and verify status flags.
----
-
-## 🌐 Connecting with Meta WhatsApp Cloud API
-
-### Step 1: Get Meta Credentials
-1. Go to [Meta for Developers](https://developers.facebook.com) and click **Create App** (Select *Business* or *Other* -> *Business*).
-2. Under "Add products to your app", click **Set up** on **WhatsApp**.
-3. Under **API Setup**, copy:
-   - **Temporary Access Token** -> Paste into `.env` as `WHATSAPP_TOKEN`
-   - **Phone Number ID** -> Paste into `.env` as `PHONE_NUMBER_ID`
-
-### Step 2: Expose Your Local Server via Tunnel
-Meta requires an HTTPS endpoint to send incoming messages. Run either:
-
-**Using ngrok:**
-```bash
-ngrok http 8000
-```
-*ngrok will output a URL like:* `https://abc-123.ngrok-free.app`
-
-**Or using Cloudflare Tunnel (100% Free):**
-```bash
-cloudflared tunnel --url http://localhost:8000
-```
-
-### Step 3: Configure Webhook in Meta Dashboard
-1. In the Meta Developer portal, go to **WhatsApp** -> **Configuration**.
-2. Click **Edit** under **Webhook**:
-   - **Callback URL:** `https://your-tunnel-url/webhook`
-   - **Verify Token:** `aerostate_secret_verify_token_2026` (must match your `.env`)
-3. Click **Verify and Save**.
-4. Under **Webhook Fields**, click **Subscribe** to `messages`.
-
-### Step 4: Send a WhatsApp Message!
-Send a WhatsApp message saying `Hi` to the test number shown on your Meta dashboard. Your bot will greet you with interactive buttons!
+- **Staff ERP Dashboard:** `http://localhost:8000`
+- **Interactive API Documentation:** `http://localhost:8000/docs`
 
 ---
 
-## 🩺 Admin Endpoints
+## 📋 Clinic Onboarding Checklist
 
-- **`GET /admin/appointments`**: View all appointments (filter by `date` or `status`).
-- **`GET /admin/doctors`**: View active doctors and specializations.
-- **`POST /admin/doctors`**: Add a new doctor to the clinic.
+When registering a new clinic tenant in the system:
+
+1. **Clinic Profile Setup:**
+   - Record unique `code`, `name`, `address`, `phone`, and `timezone` (e.g. `Asia/Kolkata`).
+   - Register the clinic's dedicated Meta `phone_number_id` and optional custom `whatsapp_token`.
+2. **Reception Configuration:**
+   - Define reception working hours (`reception_start_time` & `reception_end_time`).
+   - Configure `reception_phone` for staff handover escalations.
+3. **Payment Policies:**
+   - Select payment mode: `PAY_AT_CLINIC`, `ONLINE_REQUIRED`, or `ADVANCE_PAYMENT`.
+   - Set consultation fee per doctor.
+4. **Doctors & Schedules:**
+   - Add doctors, specify specialization, working days, consultation fee, and slot duration (e.g. 15 or 30 mins).
+5. **Reminders & Post-Appointment Toggles:**
+   - Enable/disable 24-hour and 2-hour automated reminders (`reminder_24h_enabled`, `reminder_2h_enabled`).
+   - Enable/disable feedback requests (`feedback_enabled`), follow-up reminders (`followup_reminders_enabled`), and digital document access (`document_access_enabled`).
+6. **Clinic FAQs:**
+   - Populate common clinic questions under categories (e.g., Timings, Insurance, Location, Parking).
+
+---
+
+## 🧪 Automated Test Suite (Phases 1 – 9)
+
+Run the full regression test suite covering all security, reliability, multi-tenant isolation, and clinical workflows:
+
+```bash
+python -m pytest tests/ -v
+```
+
+### Test Coverage Breakdown:
+| Test Suite | Focus Area | Status |
+| :--- | :--- | :---: |
+| `test_phase1_security_reliability.py` | Strict Clinic ID, HMAC SHA-256 Meta Signatures, Session Scoping | ✅ 10 Passed |
+| `test_phase2_menu_navigation.py` | Interactive List Menu, Command Variations, Flow Routing | ✅ 11 Passed |
+| `test_phase3_patient_booking.py` | Patient Details (Myself/Other), Slot Double-Booking Prevention | ✅ 10 Passed |
+| `test_phase4_reschedule_cancel.py` | Rescheduling, Cancellations, 2h Cutoff Policy, History | ✅ 11 Passed |
+| `test_phase5_reminders_notifications.py` | 24h/2h Reminders, Duplicate Prevention, Scheduler Retries | ✅ 10 Passed |
+| `test_phase6_reception_and_faq.py` | Reception Handover, Working Hours Logic, Dynamic FAQs | ✅ 11 Passed |
+| `test_phase7_symptom_safety_abha.py` | Multilingual Triage, Emergency Red Flags, ABHA/ADBM Gating | ✅ 14 Passed |
+| `test_phase8_post_appointment.py` | Explicit Completion, Feedback Collection, Expiring Document Tokens | ✅ 10 Passed |
+| `test_phase9_production_readiness.py` | E2E Patient Lifecycle, Multi-Clinic Isolation, Security & Reliability | ✅ 10 Passed |
+| **Total Test Count** | **Comprehensive Full System Regression** | **✅ 97 / 97 Passed** |
+
+---
+
+## 🛡️ License & Compliance
+This software is designed to assist healthcare administration and patient communication. It adheres to standard security best practices for patient privacy, tokenized document access, and non-diagnostic automated communication guardrails.

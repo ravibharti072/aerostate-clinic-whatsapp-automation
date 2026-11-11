@@ -7,6 +7,7 @@ import {
   FiUserPlus,
   FiSearch,
   FiCheck,
+  FiCheckCircle,
   FiX,
   FiKey,
   FiRotateCw,
@@ -445,7 +446,7 @@ export default function UsersView() {
     page_size: 20,
   };
 
-  const currentRoleInfo = ROLES_INFO[roleFilter] || ROLES_INFO["ALL"];
+  const currentRoleInfo = roleFilter !== "ALL" ? (ROLES_INFO[roleFilter] || null) : null;
   const hasActiveFilters = Boolean(search || roleFilter !== "ALL" || statusFilter !== "ALL");
 
   return (
@@ -455,7 +456,7 @@ export default function UsersView() {
         kicker="CLINIC ACCESS & PERMISSIONS"
         title="Staff User Accounts & Custom Portals"
         icon={FiShield}
-        showDateTime={true}
+        showDateTime={false}
         rightAction={
           <div className="flex items-center gap-3">
             <button
@@ -562,7 +563,7 @@ export default function UsersView() {
                 <currentRoleInfo.icon size={18} />
               </span>
               <div>
-                <h4 className="text-sm font-bold text-slate-900">{currentRoleInfo.title}</h4>
+                <h4 className="text-sm font-bold text-slate-900 leading-tight">{currentRoleInfo.title}</h4>
                 <span className="text-xs text-slate-500 font-medium">{currentRoleInfo.portal}</span>
               </div>
             </div>
@@ -576,16 +577,16 @@ export default function UsersView() {
           </p>
 
           <div className="mt-3.5 pt-3 border-t border-slate-100">
-            <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-2">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-400 block mb-2">
               Authorized Portal Capabilities:
             </span>
             <div className="flex flex-wrap gap-1.5">
               {currentRoleInfo.permissions.map((perm, idx) => (
                 <span
                   key={idx}
-                  className="inline-flex items-center gap-1 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-md text-[11px] font-medium"
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-slate-50 border border-slate-200 text-slate-700 rounded-md text-xs font-medium"
                 >
-                  <FiCheck className="text-emerald-600 shrink-0" size={12} />
+                  <FiCheck className="text-emerald-600 shrink-0" size={13} />
                   <span>{perm}</span>
                 </span>
               ))}
@@ -603,34 +604,6 @@ export default function UsersView() {
           badgeLabel="user accounts"
         />
 
-        {/* Account Status Tabs (Same pill-option design as All Roles) */}
-        <div className="wa-tabs-container mb-3.5">
-          <button
-            type="button"
-            onClick={() => { setStatusFilter("ALL"); setCurrentPage(1); }}
-            className={`wa-tab-btn ${statusFilter === "ALL" ? "active" : ""}`}
-          >
-            <FiUsers size={15} />
-            <span>All Accounts ({stats.total_users || 0})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setStatusFilter("ACTIVE"); setCurrentPage(1); }}
-            className={`wa-tab-btn ${statusFilter === "ACTIVE" ? "active" : ""}`}
-          >
-            <FiUserCheck size={15} />
-            <span>Active Accounts ({stats.active_users || 0})</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => { setStatusFilter("INACTIVE"); setCurrentPage(1); }}
-            className={`wa-tab-btn ${statusFilter === "INACTIVE" ? "active" : ""}`}
-          >
-            <FiUserX size={15} />
-            <span>Deactivated Accounts ({Math.max(0, (stats.total_users || 0) - (stats.active_users || 0))})</span>
-          </button>
-        </div>
-
         {statusFilter === "INACTIVE" && (
           <div className="mb-3.5 p-3.5 bg-amber-50/80 border border-amber-200/80 rounded-xl flex items-start gap-2.5 text-xs text-amber-900 leading-relaxed">
             <FiShield className="shrink-0 text-amber-600 mt-0.5" size={16} />
@@ -643,7 +616,7 @@ export default function UsersView() {
         {/* Controls & Toolbar (Filtered directly on backend) */}
         <div className="dir-controls">
           <SearchBar
-            placeholder="Search by User Name, Staff Name, or Role..."
+            placeholder="Search by user name, staff name, or role..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             onSearch={() => {
@@ -653,36 +626,27 @@ export default function UsersView() {
             onClear={handleClearFilters}
           />
 
-          <div className="dir-toolbar-right">
+          <div className="dir-filter-group flex items-center gap-2">
             <select
-              className="dir-filter-select"
-              value={roleFilter}
+              className="dir-select"
+              value={statusFilter}
               onChange={(e) => {
-                setRoleFilter(e.target.value);
+                setStatusFilter(e.target.value);
                 setCurrentPage(1);
               }}
+              style={{ height: "36px", fontSize: "12.5px", padding: "0 10px" }}
             >
-              <option value="ALL">All Roles</option>
-              <option value="frontdesk">Front Desk / Reception</option>
-              <option value="doctor">Doctors / Specialists</option>
-              <option value="pharma">Pharmacist / Inventory</option>
-              <option value="admin">Clinic Administrators</option>
+              <option value="ALL">All Account Statuses ({stats.total_users || 0})</option>
+              <option value="ACTIVE">Active Accounts ({stats.active_users || 0})</option>
+              <option value="INACTIVE">Deactivated Accounts ({Math.max(0, (stats.total_users || 0) - (stats.active_users || 0))})</option>
             </select>
-
-            <button
-              type="button"
-              onClick={handleSearchSubmit}
-              className="btn-submit"
-              style={{ width: "auto", height: "34px", padding: "0 14px", fontSize: "12.5px" }}
-            >
-              Filter
-            </button>
 
             {hasActiveFilters && (
               <button
                 type="button"
                 onClick={handleClearFilters}
                 className="btn-cancel"
+                style={{ height: "36px", fontSize: "12.5px" }}
               >
                 Clear
               </button>
@@ -719,7 +683,7 @@ export default function UsersView() {
         ) : (
           <div className="dir-table-wrapper">
             <div className="dir-scroll-bar-header">
-              <span className="dir-scroll-hint">⇄ Master User Accounts Directory</span>
+              <span className="dir-scroll-hint font-semibold text-slate-700">⇄ Master User Accounts Directory</span>
               <span className="text-xs font-semibold text-slate-500">
                 {stats.active_users} active • {stats.total_users} total accounts
               </span>
@@ -735,7 +699,7 @@ export default function UsersView() {
                 width: "100%",
               }}
             >
-              <table className="data-grid-table" style={{ minWidth: "1150px", width: "100%" }}>
+              <table className="data-grid-table" style={{ minWidth: "1200px", width: "100%" }}>
                 <thead>
                   <tr>
                     <th style={{ fontSize: "12px", whiteSpace: "nowrap" }}>USER NAME (LOGIN ID)</th>
@@ -753,12 +717,12 @@ export default function UsersView() {
                     <tr key={u.id} className={!u.is_active ? "opacity-60 bg-slate-50" : ""}>
                       {/* User Name / Login ID */}
                       <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
-                        <div className="font-mono font-bold text-slate-900 flex items-center gap-1.5">
-                          <span className="bg-slate-100 text-slate-800 px-2 py-0.5 rounded border border-slate-200">
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono font-bold text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded">
                             {u.username}
                           </span>
                           {u.is_self && (
-                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-sans px-1.5 py-0.2 rounded font-bold">
+                            <span className="text-[10px] bg-emerald-100 text-emerald-800 font-sans px-1.5 py-0.5 rounded font-bold">
                               You
                             </span>
                           )}
@@ -780,64 +744,45 @@ export default function UsersView() {
                         </div>
                       </td>
 
-                      {/* Role & Portal Badge (Pre-computed on Backend) */}
+                      {/* Role & Portal Access (Clean matching StaffView ROLE) */}
                       <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                         <div className="flex items-center gap-1.5">
-                          <span
-                            className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border text-[11px] ${
-                              u.role_theme === "teal"
-                                ? "bg-teal-50 text-teal-800 border-teal-200"
-                                : u.role_theme === "blue"
-                                ? "bg-blue-50 text-blue-800 border-blue-200"
-
-                                : "bg-emerald-50 text-emerald-800 border-emerald-200"
-                            }`}
-                          >
-                            {u.is_doctor && <FiActivity size={11} />}
-                            {u.is_frontdesk && <FiCalendar size={11} />}
-                            {u.is_pharma && <FiPackage size={11} />}
-                            {u.is_admin && <FiShield size={11} />}
-                            <span>{u.role_display}</span>
-                          </span>
-                          <span className="text-[11px] text-slate-400 font-mono">
+                          <span className="font-semibold text-slate-800">{u.role_display}</span>
+                          <span className="text-slate-500 font-mono text-xs">
                             ({u.portal_name})
                           </span>
                         </div>
                       </td>
 
-                      {/* Linked Doctor / Scope (Pre-computed on Backend) */}
+                      {/* Linked Doctor / Scope */}
                       <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                         {u.is_doctor ? (
-                          <span className="font-semibold text-[#126868]">
+                          <span className="font-medium text-[#126868]">
                             {u.doctor_display}
                           </span>
                         ) : (
-                          <span className="text-slate-400 italic text-[11px]">Clinic-wide</span>
+                          <span className="text-slate-500 italic">Clinic-wide</span>
                         )}
                       </td>
 
                       {/* Created By (Audit Tracking) */}
                       <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
-                        <span className="font-mono text-xs text-slate-600 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
+                        <span className="font-mono text-slate-600">
                           {u.created_by}
                         </span>
                       </td>
 
-                      {/* Account Status */}
+                      {/* Account Status (Identical to StaffView STATUS - NO dot, uppercase ACTIVE/INACTIVE) */}
                       <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
                         <span
-                          className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full font-bold border text-[11px] ${
-                            u.status_theme === "emerald"
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full font-bold border ${
+                            u.is_active
                               ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : "bg-rose-50 text-rose-700 border-rose-200"
                           }`}
+                          style={{ fontSize: "11px" }}
                         >
-                          <span
-                            className={`w-1.5 h-1.5 rounded-full ${
-                              u.status_theme === "emerald" ? "bg-emerald-500" : "bg-rose-500"
-                            }`}
-                          />
-                          <span>{u.status_display}</span>
+                          {u.is_active ? "ACTIVE" : "INACTIVE"}
                         </span>
                       </td>
 
@@ -853,7 +798,7 @@ export default function UsersView() {
                             <button
                               type="button"
                               onClick={() => handleOpenReset(u)}
-                              className="px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition cursor-pointer inline-flex items-center gap-1 shadow-xs"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 transition cursor-pointer shadow-xs"
                               title="Reset account password"
                             >
                               <FiKey size={12} />
@@ -865,7 +810,7 @@ export default function UsersView() {
                             <button
                               type="button"
                               onClick={() => handleOpenEdit(u)}
-                              className="px-2 py-1 text-xs font-semibold rounded-md bg-slate-100 hover:bg-slate-200 text-slate-700 transition cursor-pointer inline-flex items-center gap-1"
+                              className="inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md bg-slate-100 text-slate-700 border border-slate-200 hover:bg-[#254d90] hover:text-white transition cursor-pointer"
                               title="Edit user details and username"
                             >
                               <FiEdit2 size={12} />
@@ -877,14 +822,14 @@ export default function UsersView() {
                             <button
                               type="button"
                               onClick={() => handleToggleStatus(u.id, u.username)}
-                              className={`px-2 py-1 text-xs font-semibold rounded-md transition cursor-pointer inline-flex items-center gap-1 ${
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs font-semibold rounded-md border transition cursor-pointer ${
                                 u.is_active
-                                  ? "bg-rose-50 text-rose-600 hover:bg-rose-100 border border-rose-200"
-                                  : "bg-emerald-50 text-emerald-600 hover:bg-emerald-100 border border-emerald-200"
+                                  ? "bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-600 hover:text-white"
+                                  : "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-600 hover:text-white"
                               }`}
                               title={u.is_active ? "Deactivate user" : "Activate user"}
                             >
-                              <FiPower size={12} />
+                              {u.is_active ? <FiUserX size={12} /> : <FiUserCheck size={12} />}
                               <span>{u.is_active ? "Deactivate" : "Activate"}</span>
                             </button>
                           )}
@@ -918,7 +863,7 @@ export default function UsersView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "700px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -940,9 +885,9 @@ export default function UsersView() {
             <form onSubmit={handleCreateSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div className="modal-body space-y-4">
                 <div className="form-group">
-                  <label className="flex items-center justify-between">
+                  <label className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-slate-800">Select Staff Member (from Staff Directory)</span>
-                    <span className="text-[11px] font-normal text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                    <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
                       Auto-fills Name &amp; Role
                     </span>
                   </label>
@@ -987,30 +932,34 @@ export default function UsersView() {
                       }
                       className="font-mono"
                     />
-                    <span className="text-[11px] text-slate-400 mt-0.5">
+                    <span className="text-[11px] text-slate-400 mt-1 block">
                       Unique lowercase login username
                     </span>
                   </div>
 
                   <div className="form-group">
                     <label>Login Password *</label>
-                    <div className="relative">
+                    <div className="relative flex items-center">
                       <input
                         type={showCreatePassword ? "text" : "password"}
                         required
                         placeholder="Minimum 4 characters"
                         value={createForm.password}
                         onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-                        style={{ paddingRight: "36px" }}
+                        style={{ paddingRight: "38px" }}
                       />
                       <button
                         type="button"
                         onClick={() => setShowCreatePassword(!showCreatePassword)}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                        className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        title={showCreatePassword ? "Hide password" : "Show password"}
                       >
                         {showCreatePassword ? <FiEyeOff size={15} /> : <FiEye size={15} />}
                       </button>
                     </div>
+                    <span className="text-[11px] text-slate-400 mt-1 block">
+                      Secure password for portal authentication
+                    </span>
                   </div>
                 </div>
 
@@ -1067,11 +1016,11 @@ export default function UsersView() {
                   </div>
                 )}
 
-                <div className="info-box-note">
-                  <FiInfo size={16} style={{ flexShrink: 0 }} />
-                  <span>
-                    Account will be created under the current Administrator. Permissions and sidebar navigation adapt automatically to the assigned role.
-                  </span>
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Account will be created under the current Administrator. Permissions and sidebar navigation adapt automatically to the assigned role.</span>
+                  </div>
                 </div>
               </div>
 
@@ -1088,7 +1037,7 @@ export default function UsersView() {
                   disabled={savingUser}
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>{savingUser ? "Creating Account..." : "Create User Account"}</span>
                 </button>
               </div>
@@ -1102,7 +1051,7 @@ export default function UsersView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "520px" }}
+            style={{ maxWidth: "700px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1124,9 +1073,9 @@ export default function UsersView() {
             <form onSubmit={handleEditSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div className="modal-body space-y-4">
                 <div className="form-group">
-                  <label className="flex items-center justify-between">
+                  <label className="flex items-center justify-between mb-1">
                     <span className="font-semibold text-slate-800">Fetch / Sync from Staff Directory</span>
-                    <span className="text-[11px] font-normal text-teal-700 bg-teal-50 px-2 py-0.5 rounded-full border border-teal-200">
+                    <span className="text-[11px] font-semibold text-teal-700 bg-teal-50 px-2.5 py-0.5 rounded-full border border-teal-200">
                       Direct Staff Sync
                     </span>
                   </label>
@@ -1144,48 +1093,62 @@ export default function UsersView() {
                   </select>
                 </div>
 
-                <div className="form-group">
-                  <label>Staff Member Full Name *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editUser.name}
-                    onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
-                  />
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Staff Member Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editUser.name}
+                      onChange={(e) => setEditUser({ ...editUser, name: e.target.value })}
+                    />
+                  </div>
+
+                  <div className="form-group">
+                    <label>User Name (Login ID) *</label>
+                    <input
+                      type="text"
+                      required
+                      value={editUser.username}
+                      onChange={(e) =>
+                        setEditUser({
+                          ...editUser,
+                          username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
+                        })
+                      }
+                      className="font-mono"
+                    />
+                    <span className="text-[11px] text-slate-400 mt-1 block">
+                      Login identifier used to access the portal
+                    </span>
+                  </div>
                 </div>
 
-                <div className="form-group">
-                  <label>User Name (Login ID) *</label>
-                  <input
-                    type="text"
-                    required
-                    value={editUser.username}
-                    onChange={(e) =>
-                      setEditUser({
-                        ...editUser,
-                        username: e.target.value.toLowerCase().replace(/[^a-z0-9._-]/g, ""),
-                      })
-                    }
-                    className="font-mono"
-                  />
-                  <span className="text-[11px] text-slate-400 mt-0.5">
-                    Login identifier used to access the portal
-                  </span>
-                </div>
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Assigned Role *</label>
+                    <select
+                      value={editUser.role}
+                      onChange={(e) => setEditUser({ ...editUser, role: e.target.value })}
+                      className="font-bold text-slate-800"
+                    >
+                      {options.roles?.map((r) => (
+                        <option key={r.value} value={r.value}>
+                          {r.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
 
-                <div className="form-group">
-                  <label>Assigned Role *</label>
-                  <select
-                    value={editUser.role}
-                    onChange={(e) => setEditUser({ ...editUser, role: e.target.value })}
-                    className="font-bold"
-                  >
-                    {options.roles?.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="form-group">
+                    <label>Update Password (Optional)</label>
+                    <input
+                      type="password"
+                      placeholder="Leave blank to keep current"
+                      value={editUser.password}
+                      onChange={(e) => setEditUser({ ...editUser, password: e.target.value })}
+                    />
+                  </div>
                 </div>
 
                 {editUser.role === "doctor" && (
@@ -1205,27 +1168,23 @@ export default function UsersView() {
                   </div>
                 )}
 
-                <div className="form-group">
-                  <label>Update Password (Optional)</label>
-                  <input
-                    type="password"
-                    placeholder="Leave blank to keep current password"
-                    value={editUser.password}
-                    onChange={(e) => setEditUser({ ...editUser, password: e.target.value })}
-                  />
-                </div>
-
-                <div className="flex items-center gap-2 pt-2">
+                <div
+                  className="info-box-note flex items-center justify-between cursor-pointer select-none"
+                  onClick={() => setEditUser({ ...editUser, is_active: !editUser.is_active })}
+                >
+                  <div className="flex items-center gap-2">
+                    <FiCheckCircle size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Account is Active and authorized to sign in to the clinic portal</span>
+                  </div>
                   <input
                     type="checkbox"
                     id="edit_is_active"
                     checked={editUser.is_active}
                     onChange={(e) => setEditUser({ ...editUser, is_active: e.target.checked })}
-                    className="h-4 w-4 text-[#254d90] rounded"
+                    className="cursor-pointer"
+                    style={{ width: "16px", height: "16px" }}
+                    onClick={(e) => e.stopPropagation()}
                   />
-                  <label htmlFor="edit_is_active" className="text-xs font-bold text-slate-700 m-0 cursor-pointer">
-                    Account is Active and allowed to sign in
-                  </label>
                 </div>
               </div>
 
@@ -1242,7 +1201,7 @@ export default function UsersView() {
                   disabled={savingEdit}
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>{savingEdit ? "Saving..." : "Save Changes"}</span>
                 </button>
               </div>
@@ -1256,7 +1215,7 @@ export default function UsersView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "460px" }}
+            style={{ maxWidth: "560px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1277,25 +1236,26 @@ export default function UsersView() {
 
             <form onSubmit={handleResetSubmit} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div className="modal-body space-y-4">
-                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800">
+                <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 font-medium">
                   You are resetting the password for User Name <strong>{resetUser.username}</strong>. The user will need this new password to sign in.
                 </div>
 
                 <div className="form-group">
                   <label>New Password *</label>
-                  <div className="relative">
+                  <div className="relative flex items-center">
                     <input
                       type={showResetPassword ? "text" : "password"}
                       required
-                      placeholder="Enter at least 4 characters"
+                      placeholder="Minimum 4 characters"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      style={{ paddingRight: "36px" }}
+                      style={{ paddingRight: "38px" }}
                     />
                     <button
                       type="button"
                       onClick={() => setShowResetPassword(!showResetPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1"
+                      className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                      title={showResetPassword ? "Hide password" : "Show password"}
                     >
                       {showResetPassword ? <FiEyeOff size={15} /> : <FiEye size={15} />}
                     </button>
@@ -1316,8 +1276,8 @@ export default function UsersView() {
                   disabled={savingReset}
                   className="btn-submit"
                 >
-                  <FiKey size={14} />
-                  <span>{savingReset ? "Resetting..." : "Reset Password"}</span>
+                  <FiCheck size={14} className="shrink-0" />
+                  <span>{savingReset ? "Updating..." : "Reset Password"}</span>
                 </button>
               </div>
             </form>

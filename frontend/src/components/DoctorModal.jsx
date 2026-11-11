@@ -1,6 +1,16 @@
 import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { FiX, FiClock, FiCalendar, FiUserCheck, FiCheck, FiAlertCircle, FiArrowRight } from "react-icons/fi";
+import {
+  FiX,
+  FiClock,
+  FiCalendar,
+  FiUserCheck,
+  FiCheck,
+  FiCheckCircle,
+  FiAlertCircle,
+  FiArrowRight,
+} from "react-icons/fi";
+import { FaRupeeSign } from "react-icons/fa";
 import { createDoctor, updateDoctor, fetchEligibleStaffForDoctor, fetchStaff } from "../api";
 
 const ALL_DAYS = [
@@ -171,17 +181,17 @@ export default function DoctorModal({ isOpen, onClose, doctor, onSaved }) {
   };
 
   return (
-    <div className="modal-overlay">
+    <div className="modal-overlay" onClick={onClose}>
       <div
         className="modal-content"
-        style={{ maxWidth: "560px" }}
+        style={{ maxWidth: "700px", maxHeight: "92vh" }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
           <div>
             <h2>{isEditing ? "Edit Specialist Schedule" : "Configure Specialist Schedule"}</h2>
             <div className="modal-kicker">
-              Specialists are linked directly to personnel in Staff & Duty Directory
+              Specialists are linked directly to personnel in Staff &amp; Duty Directory
             </div>
           </div>
           <button
@@ -229,7 +239,9 @@ export default function DoctorModal({ isOpen, onClose, doctor, onSaved }) {
                   </span>
                 </div>
               ) : loadingStaff ? (
-                <div className="py-2 text-xs text-slate-400">Loading registered clinic staff...</div>
+                <div className="py-2.5 px-3 text-xs text-slate-400 bg-slate-50 rounded-lg border border-slate-200">
+                  Loading registered clinic staff...
+                </div>
               ) : (
                 <>
                   <select
@@ -292,39 +304,61 @@ export default function DoctorModal({ isOpen, onClose, doctor, onSaved }) {
               )}
             </div>
 
-            <div className="form-group">
-              <label>Medical Specialization / Clinical Department *</label>
-              <input
-                type="text"
-                required
-                placeholder="e.g. Dentistry, Cardiology, General Medicine, Pediatrics"
-                value={specialization}
-                onChange={(e) => setSpecialization(e.target.value)}
-              />
-            </div>
-
-            <div className="form-group">
-              <label>Standard Consultation Fee (₹) *</label>
-              <div className="relative">
-                <span className="absolute left-3 top-2.5 text-slate-400 font-bold text-sm">₹</span>
+            {/* Department & Consultation Fee in 2-Column Row (Matches Invoice Form Style) */}
+            <div className="form-row">
+              <div className="form-group">
+                <label>Medical Specialization / Clinical Department *</label>
                 <input
-                  type="number"
+                  type="text"
                   required
-                  min="0"
-                  step="50"
-                  placeholder="500"
-                  value={consultationFee}
-                  onChange={(e) => setConsultationFee(e.target.value)}
-                  style={{ paddingLeft: "26px" }}
+                  placeholder="e.g. Dentistry, Cardiology, Pediatrics"
+                  value={specialization}
+                  onChange={(e) => setSpecialization(e.target.value)}
                 />
               </div>
-              <span className="text-[11px] text-slate-500 mt-1 block">
-                Default OPD fee charged when booking consultations with this specialist.
-              </span>
+
+              <div className="form-group">
+                <label>Standard Consultation Fee (₹) *</label>
+                <div className="relative flex items-center">
+                  <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                    <FaRupeeSign size={12} />
+                  </div>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    step="50"
+                    placeholder="500"
+                    value={consultationFee}
+                    onChange={(e) => setConsultationFee(e.target.value)}
+                    style={{ paddingLeft: "28px" }}
+                  />
+                </div>
+              </div>
             </div>
 
+            {/* Available Days */}
             <div className="form-group">
-              <label>Available Days of the Week</label>
+              <div className="flex items-center justify-between mb-1">
+                <label className="m-0">Available Days of the Week</label>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setAvailableDays(["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"])}
+                    className="text-[11px] font-semibold text-[#254d90] hover:underline cursor-pointer"
+                  >
+                    Mon–Sat
+                  </button>
+                  <span className="text-slate-300">•</span>
+                  <button
+                    type="button"
+                    onClick={() => setAvailableDays(ALL_DAYS)}
+                    className="text-[11px] font-semibold text-[#254d90] hover:underline cursor-pointer"
+                  >
+                    All 7 Days
+                  </button>
+                </div>
+              </div>
               <div className="flex flex-wrap gap-1.5 pt-1">
                 {ALL_DAYS.map((day) => {
                   const selected = availableDays.includes(day);
@@ -346,6 +380,7 @@ export default function DoctorModal({ isOpen, onClose, doctor, onSaved }) {
               </div>
             </div>
 
+            {/* Timings and Slot Duration */}
             <div className="form-row-3">
               <div className="form-group">
                 <label>Start Time</label>
@@ -381,21 +416,24 @@ export default function DoctorModal({ isOpen, onClose, doctor, onSaved }) {
               </div>
             </div>
 
-            <div className="flex items-center space-x-2 pt-1">
+            {/* Active Specialist Toggle Styled Exactly Like Billing WhatsApp Box */}
+            <div
+              className="info-box-note flex items-center justify-between cursor-pointer select-none"
+              onClick={() => setIsActive(!isActive)}
+            >
+              <div className="flex items-center gap-2">
+                <FiCheckCircle size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                <span>Active Specialist (Visible in WhatsApp interactive menu &amp; OPD bookings)</span>
+              </div>
               <input
                 type="checkbox"
                 id="activeToggle"
                 checked={isActive}
                 onChange={(e) => setIsActive(e.target.checked)}
-                className="rounded border-slate-300 text-[#254d90] focus:ring-[#254d90] cursor-pointer"
+                className="cursor-pointer"
                 style={{ width: "16px", height: "16px" }}
+                onClick={(e) => e.stopPropagation()}
               />
-              <label
-                htmlFor="activeToggle"
-                className="text-xs font-semibold text-slate-700 cursor-pointer"
-              >
-                Active Specialist (Visible in WhatsApp interactive menu & OPD bookings)
-              </label>
             </div>
           </div>
 
@@ -412,7 +450,7 @@ export default function DoctorModal({ isOpen, onClose, doctor, onSaved }) {
               disabled={loading || (!isEditing && !selectedStaffId)}
               className="btn-submit"
             >
-              <FiCheck size={14} />
+              <FiCheck size={14} className="shrink-0" />
               <span>{loading ? "Saving..." : isEditing ? "Save Changes" : "Activate Specialist Schedule"}</span>
             </button>
           </div>

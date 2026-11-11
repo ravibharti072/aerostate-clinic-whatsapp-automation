@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
+import { FaRupeeSign } from "react-icons/fa";
 import {
   FiPackage,
   FiSearch,
@@ -30,7 +31,8 @@ import {
   FiGrid,
   FiPhone,
   FiCalendar,
-  FiUser
+  FiUser,
+  FiInfo,
 } from "react-icons/fi";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
@@ -170,6 +172,7 @@ export default function PharmacyView() {
 
   // Goods Receipt Modal
   const [isGrnOpen, setIsGrnOpen] = useState(false);
+  const [grnMedSearch, setGrnMedSearch] = useState("");
   const [grnForm, setGrnForm] = useState({
     medicine_id: "",
     batch_number: "",
@@ -179,6 +182,26 @@ export default function PharmacyView() {
     purchase_cost: 30,
     selling_price: 50,
   });
+
+  const filteredGrnMedicines = useMemo(() => {
+    if (!medicines || !Array.isArray(medicines)) return [];
+    if (!grnMedSearch.trim()) {
+      return medicines.slice(0, 15);
+    }
+    const q = grnMedSearch.toLowerCase().trim();
+    return medicines.filter((m) => {
+      const name = (m.name || "").toLowerCase();
+      const generic = (m.generic_name || "").toLowerCase();
+      const brand = (m.brand || "").toLowerCase();
+      const code = (m.code || "").toLowerCase();
+      return name.includes(q) || generic.includes(q) || brand.includes(q) || code.includes(q);
+    });
+  }, [medicines, grnMedSearch]);
+
+  const selectedGrnMed = useMemo(() => {
+    if (!grnForm.medicine_id || !medicines) return null;
+    return medicines.find((m) => String(m.id) === String(grnForm.medicine_id)) || null;
+  }, [grnForm.medicine_id, medicines]);
 
   // Add Medicine to Catalogue Modal
   const [isAddMedOpen, setIsAddMedOpen] = useState(false);
@@ -250,6 +273,26 @@ export default function PharmacyView() {
   const [dispensing, setDispensing] = useState(false);
   const [patientPrescriptions, setPatientPrescriptions] = useState([]);
   const [createInvoiceOnDispense, setCreateInvoiceOnDispense] = useState(true);
+  const [dispensePatientSearch, setDispensePatientSearch] = useState("");
+
+  const filteredDispensePatients = useMemo(() => {
+    if (!patients || !Array.isArray(patients)) return [];
+    if (!dispensePatientSearch.trim()) {
+      return patients.slice(0, 15);
+    }
+    const q = dispensePatientSearch.toLowerCase().trim();
+    return patients.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const phone = (p.phone || "").toLowerCase();
+      const uid = (p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`).toLowerCase();
+      return name.includes(q) || phone.includes(q) || uid.includes(q);
+    });
+  }, [patients, dispensePatientSearch]);
+
+  const selectedDispensePatient = useMemo(() => {
+    if (!dispenseForm.patient_id || !patients) return null;
+    return patients.find((p) => String(p.id) === String(dispenseForm.patient_id)) || null;
+  }, [dispenseForm.patient_id, patients]);
 
   // Dedicated Collect Payment Modal State
   const [isCollectModalOpen, setIsCollectModalOpen] = useState(false);
@@ -401,6 +444,7 @@ export default function PharmacyView() {
 
   const handleCloseDispenseModal = () => {
     setIsDispenseOpen(false);
+    setDispensePatientSearch("");
     if (searchParams.get("patient_id") || searchParams.get("prescription_id")) {
       setSearchParams({}, { replace: true });
     }
@@ -866,22 +910,27 @@ export default function PharmacyView() {
 
   const handleGoodsReceipt = async (e) => {
     e.preventDefault();
+    if (!grnForm.medicine_id) {
+      showToast("Please select a medicine from catalogue", "error");
+      return;
+    }
     try {
       await recordGoodsReceipt({
         received_by: "Pharmacist",
         items: [
           {
             medicine_id: parseInt(grnForm.medicine_id),
-            batch_number: grnForm.batch_number,
+            batch_number: grnForm.batch_number.trim().toUpperCase(),
             supplier_name: grnForm.supplier_name,
             expiry_date: grnForm.expiry_date,
             quantity: parseInt(grnForm.quantity),
-            purchase_cost: parseInt(grnForm.purchase_cost),
-            selling_price: parseInt(grnForm.selling_price),
+            purchase_cost: parseFloat(grnForm.purchase_cost) || 0,
+            selling_price: parseFloat(grnForm.selling_price) || 0,
           },
         ],
       });
       setIsGrnOpen(false);
+      setGrnMedSearch("");
       loadData();
       showToast("Stock successfully received and added to dispensary inventory!", "success");
     } catch (err) {
@@ -2723,7 +2772,7 @@ export default function PharmacyView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "640px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -2734,39 +2783,163 @@ export default function PharmacyView() {
               <button
                 type="button"
                 className="modal-close"
-                onClick={() => setIsGrnOpen(false)}
+                onClick={() => { setIsGrnOpen(false); setGrnMedSearch(""); }}
               >
                 <FiX size={18} />
               </button>
             </div>
-            <form onSubmit={handleGoodsReceipt} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <div className="modal-body">
-                <div className="form-group">
-                  <label>Select Medicine *</label>
-                  <select
-                    required
-                    value={grnForm.medicine_id}
-                    onChange={(e) => setGrnForm({ ...grnForm, medicine_id: e.target.value })}
-                  >
-                    <option value="">-- Choose Medicine --</option>
-                    {medicines.map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} ({m.dosage_form} - {m.strength})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+            <form onSubmit={handleGoodsReceipt} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <div className="modal-body space-y-3.5" style={{ overflowY: "auto", maxHeight: "calc(92vh - 140px)", flex: 1 }}>
+                {/* Searchable Medicine Selector */}
+                {selectedGrnMed ? (
+                  /* Selected Medicine Banner */
+                  <div className="p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div
+                        className="shrink-0 rounded-full flex items-center justify-center font-bold text-white shadow-xs"
+                        style={{
+                          width: "38px",
+                          height: "38px",
+                          fontSize: "14px",
+                          background: "#254d90",
+                        }}
+                      >
+                        {selectedGrnMed.name ? selectedGrnMed.name.charAt(0).toUpperCase() : "M"}
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-bold text-slate-900 text-sm truncate">
+                            {selectedGrnMed.name}
+                          </span>
+                          <span className="font-mono font-bold text-xs text-[#254d90] bg-white px-2 py-0.5 rounded border border-[#254d90]/30 shrink-0">
+                            {selectedGrnMed.code || `MED-${selectedGrnMed.id}`}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-600 mt-0.5 flex items-center gap-2 flex-wrap font-medium">
+                          <span>{selectedGrnMed.dosage_form || "Medicine"} • {selectedGrnMed.strength || "Standard"}</span>
+                          {selectedGrnMed.generic_name && (
+                            <>
+                              <span>•</span>
+                              <span className="italic">{selectedGrnMed.generic_name}</span>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setGrnForm((prev) => ({ ...prev, medicine_id: "" }));
+                        setGrnMedSearch("");
+                      }}
+                      className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#254d90] bg-white hover:bg-[#254d90] hover:text-white border border-[#254d90]/30 transition shrink-0 cursor-pointer shadow-xs"
+                    >
+                      Change Medicine
+                    </button>
+                  </div>
+                ) : (
+                  /* Search Bar & Filtered Medicines List */
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-xs font-bold text-slate-700 block">
+                        Select Medicine *
+                      </label>
+                      <span className="text-[11px] text-slate-500 font-medium">
+                        {medicines.length} catalogue medicines
+                      </span>
+                    </div>
 
+                    <div className="relative flex items-center">
+                      <FiSearch className="absolute left-3 text-slate-400 pointer-events-none" size={15} />
+                      <input
+                        type="text"
+                        placeholder="Search medicine by brand name, generic formula, or code..."
+                        value={grnMedSearch}
+                        onChange={(e) => setGrnMedSearch(e.target.value)}
+                        style={{ paddingLeft: "34px", paddingRight: "32px", height: "40px" }}
+                        className="w-full rounded-lg border border-slate-300 text-sm bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                      />
+                      {grnMedSearch && (
+                        <button
+                          type="button"
+                          onClick={() => setGrnMedSearch("")}
+                          className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                        >
+                          <FiX size={14} />
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Dropdown list of matching medicines */}
+                    <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg mt-1.5 bg-white shadow-xs">
+                      {filteredGrnMedicines.length === 0 ? (
+                        <div className="p-3 text-center text-xs text-slate-500">
+                          {grnMedSearch ? `No medicines matching "${grnMedSearch}"` : "No medicines in catalogue."}
+                        </div>
+                      ) : (
+                        filteredGrnMedicines.map((m) => (
+                          <div
+                            key={m.id}
+                            onClick={() => {
+                              setGrnForm((prev) => ({
+                                ...prev,
+                                medicine_id: String(m.id),
+                                purchase_cost: m.purchase_price !== undefined ? m.purchase_price : prev.purchase_cost,
+                                selling_price: m.selling_price !== undefined ? m.selling_price : prev.selling_price,
+                              }));
+                              setGrnMedSearch("");
+                            }}
+                            className="p-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition"
+                          >
+                            <div className="flex items-center gap-2.5 min-w-0">
+                              <div
+                                className="shrink-0 rounded-full flex items-center justify-center font-bold text-white"
+                                style={{
+                                  width: "30px",
+                                  height: "30px",
+                                  fontSize: "12px",
+                                  background: "#254d90",
+                                }}
+                              >
+                                {m.name ? m.name.charAt(0).toUpperCase() : "M"}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <span className="font-bold text-slate-900 text-xs">{m.name}</span>
+                                  <span className="font-mono font-bold text-[10px] text-[#254d90] bg-[#254d90]/10 px-1.5 py-0.2 rounded border border-[#254d90]/20">
+                                    {m.code || `MED-${m.id}`}
+                                  </span>
+                                </div>
+                                <div className="text-[11px] text-slate-500 mt-0.5">
+                                  {m.dosage_form} • {m.strength} {m.generic_name ? `(${m.generic_name})` : ""}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              className="px-2.5 py-1 rounded text-xs font-semibold text-[#254d90] bg-blue-50 hover:bg-[#254d90] hover:text-white border border-blue-200 transition shrink-0 cursor-pointer"
+                            >
+                              Select
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Batch Number & Quantity */}
                 <div className="form-row">
                   <div className="form-group">
                     <label>Batch Number *</label>
                     <input
                       type="text"
                       required
-                      placeholder="e.g. BN-AUG26-01"
+                      placeholder="e.g. BN-AUG28-01"
                       value={grnForm.batch_number}
                       onChange={(e) => setGrnForm({ ...grnForm, batch_number: e.target.value })}
-                      className="font-mono"
+                      style={{ height: "40px" }}
+                      className="font-mono font-bold"
                     />
                   </div>
                   <div className="form-group">
@@ -2777,11 +2950,56 @@ export default function PharmacyView() {
                       min={1}
                       value={grnForm.quantity}
                       onChange={(e) => setGrnForm({ ...grnForm, quantity: e.target.value })}
-                      className="font-mono"
+                      style={{ height: "40px" }}
+                      className="font-mono font-bold"
                     />
                   </div>
                 </div>
 
+                {/* Unit Purchase Cost & Selling Price */}
+                <div className="form-row">
+                  <div className="form-group">
+                    <label>Purchase Cost per Unit (₹) *</label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        placeholder="e.g. 30"
+                        value={grnForm.purchase_cost}
+                        onChange={(e) => setGrnForm({ ...grnForm, purchase_cost: e.target.value })}
+                        style={{ paddingLeft: "32px", height: "40px" }}
+                        className="font-mono font-bold text-sm w-full rounded-lg border border-slate-300 bg-white"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="form-group">
+                    <label>Selling Price / MRP per Unit (₹) *</label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        required
+                        placeholder="e.g. 50"
+                        value={grnForm.selling_price}
+                        onChange={(e) => setGrnForm({ ...grnForm, selling_price: e.target.value })}
+                        style={{ paddingLeft: "32px", height: "40px" }}
+                        className="font-mono font-bold text-sm w-full rounded-lg border border-slate-300 bg-white"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expiry Date & Supplier Name */}
                 <div className="form-row">
                   <div className="form-group">
                     <label>Expiry Date *</label>
@@ -2790,6 +3008,7 @@ export default function PharmacyView() {
                       required
                       value={grnForm.expiry_date}
                       onChange={(e) => setGrnForm({ ...grnForm, expiry_date: e.target.value })}
+                      style={{ height: "40px" }}
                       className="font-mono"
                     />
                   </div>
@@ -2801,6 +3020,7 @@ export default function PharmacyView() {
                       placeholder="e.g. AeroHealth Pharma Distributors"
                       value={grnForm.supplier_name}
                       onChange={(e) => setGrnForm({ ...grnForm, supplier_name: e.target.value })}
+                      style={{ height: "40px" }}
                     />
                     <datalist id="supplier-options">
                       {(pharmacyOptions?.suppliers || [
@@ -2814,12 +3034,31 @@ export default function PharmacyView() {
                     </datalist>
                   </div>
                 </div>
+
+                {/* Total Value Summary Chip */}
+                {grnForm.quantity && grnForm.purchase_cost ? (
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Estimated Inward Batch Valuation:</span>
+                    <span className="font-mono font-bold text-[#254d90] text-sm inline-flex items-center gap-0.5">
+                      <FaRupeeSign size={12} />
+                      <span>{((parseFloat(grnForm.quantity) || 0) * (parseFloat(grnForm.purchase_cost) || 0)).toLocaleString("en-IN", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+                    </span>
+                  </div>
+                ) : null}
+
+                {/* Clinical / Audit Info Note */}
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Received stock batches are immediately available for clinical prescription fulfillment and OPD counter dispatch.</span>
+                  </div>
+                </div>
               </div>
 
               <div className="modal-footer">
                 <button
                   type="button"
-                  onClick={() => setIsGrnOpen(false)}
+                  onClick={() => { setIsGrnOpen(false); setGrnMedSearch(""); }}
                   className="btn-cancel"
                 >
                   Cancel
@@ -2828,7 +3067,7 @@ export default function PharmacyView() {
                   type="submit"
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>Confirm &amp; Receive Stock</span>
                 </button>
               </div>
@@ -2848,7 +3087,10 @@ export default function PharmacyView() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <h2>Dispense Medicine</h2>
+              <div>
+                <h2>Dispense Medicine</h2>
+                <div className="modal-kicker">Fulfill prescriptions &amp; clinical dispensary dispatch</div>
+              </div>
               <button
                 type="button"
                 className="modal-close"
@@ -2859,50 +3101,187 @@ export default function PharmacyView() {
             </div>
             <form onSubmit={handleDispense} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div className="modal-body" style={{ overflowY: "auto", maxHeight: "calc(92vh - 140px)" }}>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="form-group">
-                    <label className="block text-sm font-semibold text-slate-800 mb-1.5">Select Patient *</label>
-                    <select
-                      required
-                      value={dispenseForm.patient_id}
-                      onChange={(e) => {
-                        const pId = e.target.value;
-                        setDispenseForm({
-                          ...dispenseForm,
-                          patient_id: pId,
-                          prescription_id: "",
-                          items: [
-                            {
-                              id: `item-${Date.now()}`,
-                              medicine_name: "",
-                              dosage: "",
-                              duration: "",
-                              instructions: "",
-                              batch_id: "",
-                              quantity: 10,
-                              fulfillment: "CLINIC",
-                            },
-                          ],
-                        });
-                      }}
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
-                    >
-                      <option value="">-- Choose Patient --</option>
-                      {patients.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.name} ({p.phone})
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+                {/* Patient Selection & Optional Prescription Linkage */}
+                <div className="space-y-3 mb-4">
+                  {selectedDispensePatient ? (
+                    /* Selected Patient Banner */
+                    <div className="p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div
+                          className="shrink-0 rounded-full flex items-center justify-center font-bold text-white shadow-xs"
+                          style={{
+                            width: "38px",
+                            height: "38px",
+                            fontSize: "14px",
+                            background: "#254d90",
+                          }}
+                        >
+                          {selectedDispensePatient.name ? selectedDispensePatient.name.charAt(0).toUpperCase() : "P"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900 text-sm truncate">
+                              {selectedDispensePatient.name}
+                            </span>
+                            <span className="font-mono font-bold text-xs text-[#254d90] bg-white px-2 py-0.5 rounded border border-[#254d90]/30 shrink-0">
+                              {selectedDispensePatient.patient_uid || `PAT-${String(selectedDispensePatient.id).padStart(4, "0")}`}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-600 mt-0.5 flex items-center gap-2 flex-wrap font-medium">
+                            <span>{selectedDispensePatient.phone_display || selectedDispensePatient.phone}</span>
+                            {(selectedDispensePatient.gender || selectedDispensePatient.age) && (
+                              <>
+                                <span>•</span>
+                                <span>{[selectedDispensePatient.gender, selectedDispensePatient.age ? `${selectedDispensePatient.age} yrs` : null].filter(Boolean).join(", ")}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDispenseForm({
+                            ...dispenseForm,
+                            patient_id: "",
+                            prescription_id: "",
+                            items: [
+                              {
+                                id: `item-${Date.now()}`,
+                                medicine_name: "",
+                                dosage: "",
+                                duration: "",
+                                instructions: "",
+                                batch_id: "",
+                                quantity: 10,
+                                fulfillment: "CLINIC",
+                              },
+                            ],
+                          });
+                          setDispensePatientSearch("");
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#254d90] bg-white hover:bg-[#254d90] hover:text-white border border-[#254d90]/30 transition shrink-0 cursor-pointer shadow-xs"
+                      >
+                        Change Patient
+                      </button>
+                    </div>
+                  ) : (
+                    /* Searchable Patient Input & Results List */
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5">
+                        <label className="text-xs font-bold text-slate-700 block">
+                          Select Patient *
+                        </label>
+                        <span className="text-[11px] text-slate-500 font-medium">
+                          {patients.length} registered patients
+                        </span>
+                      </div>
+                      <div className="relative flex items-center">
+                        <FiSearch className="absolute left-3 text-slate-400 pointer-events-none" size={15} />
+                        <input
+                          type="text"
+                          placeholder="Search patient by name, mobile, or PAT UID..."
+                          value={dispensePatientSearch}
+                          onChange={(e) => setDispensePatientSearch(e.target.value)}
+                          style={{ paddingLeft: "34px", paddingRight: "32px", height: "40px" }}
+                          className="w-full rounded-lg border border-slate-300 text-sm bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                        />
+                        {dispensePatientSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setDispensePatientSearch("")}
+                            className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                          >
+                            <FiX size={14} />
+                          </button>
+                        )}
+                      </div>
 
-                  {/* Optional Prescription Linkage */}
-                  <div className="form-group">
-                    <label className="block text-sm font-semibold text-slate-800 mb-1.5">Fulfill Prescription (Optional)</label>
+                      {/* Dropdown list of matching patients */}
+                      <div className="max-h-44 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg mt-1.5 bg-white shadow-xs">
+                        {filteredDispensePatients.length === 0 ? (
+                          <div className="p-3 text-center text-xs text-slate-500">
+                            {dispensePatientSearch ? `No registered patients matching "${dispensePatientSearch}"` : "No patients found in directory."}
+                          </div>
+                        ) : (
+                          filteredDispensePatients.map((p) => (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                setDispenseForm({
+                                  ...dispenseForm,
+                                  patient_id: String(p.id),
+                                  prescription_id: "",
+                                  items: [
+                                    {
+                                      id: `item-${Date.now()}`,
+                                      medicine_name: "",
+                                      dosage: "",
+                                      duration: "",
+                                      instructions: "",
+                                      batch_id: "",
+                                      quantity: 10,
+                                      fulfillment: "CLINIC",
+                                    },
+                                  ],
+                                });
+                                setDispensePatientSearch("");
+                              }}
+                              className="p-2.5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition"
+                            >
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                <div
+                                  className="shrink-0 rounded-full flex items-center justify-center font-bold text-white"
+                                  style={{
+                                    width: "30px",
+                                    height: "30px",
+                                    fontSize: "12px",
+                                    background: "#254d90",
+                                  }}
+                                >
+                                  {p.name ? p.name.charAt(0).toUpperCase() : "P"}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="font-bold text-slate-900 text-xs">{p.name}</span>
+                                    <span className="font-mono font-bold text-[10px] text-[#254d90] bg-[#254d90]/10 px-1.5 py-0.2 rounded border border-[#254d90]/20">
+                                      {p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5">
+                                    {p.phone}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="px-2.5 py-1 rounded text-xs font-semibold text-[#254d90] bg-blue-50 hover:bg-[#254d90] hover:text-white border border-blue-200 transition shrink-0 cursor-pointer"
+                              >
+                                Select
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Prescription Linkage */}
+                  <div className="form-group mb-0">
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Fulfill Prescription (Optional)
+                      {patientPrescriptions.length > 0 && (
+                        <span className="ml-1.5 font-semibold text-[#254d90]">
+                          ({patientPrescriptions.length} active prescription{patientPrescriptions.length > 1 ? "s" : ""} found)
+                        </span>
+                      )}
+                    </label>
                     <select
                       value={dispenseForm.prescription_id || ""}
                       onChange={(e) => handlePrescriptionChange(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
+                      disabled={!dispenseForm.patient_id}
+                      style={{ height: "40px" }}
+                      className="w-full rounded-lg border border-slate-300 text-xs font-medium text-slate-800 bg-white focus:border-[#254d90] outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     >
                       <option value="">-- Direct / Walk-in Dispense --</option>
                       {patientPrescriptions.map((rx) => {
@@ -2935,16 +3314,16 @@ export default function PharmacyView() {
                   return (
                     <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-lg space-y-2.5 my-2">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-slate-800">Prescription Details</span>
-                        <span className="text-xs font-mono font-medium text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
+                        <span className="text-xs font-bold text-slate-800">Prescription Details</span>
+                        <span className="text-xs font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded border border-slate-200">
                           {activeRx.prescription_uid || `#RX-${activeRx.id}`}
                         </span>
                       </div>
-                      <div className="text-sm text-slate-600">
+                      <div className="text-xs text-slate-600 font-medium">
                         Doctor: <strong className="text-slate-800">{activeRx.doctor_name || "Doctor"}</strong> • Diagnosis: <strong className="text-slate-800">{activeRx.diagnosis || "—"}</strong>
                       </div>
                       <div>
-                        <div className="text-xs font-medium text-slate-500 mb-1.5">Prescribed Medicines ({activeRx.medicines?.length || 0}):</div>
+                        <div className="text-xs font-semibold text-slate-500 mb-1.5">Prescribed Medicines ({activeRx.medicines?.length || 0}):</div>
                         <div className="flex flex-wrap gap-1.5">
                           {(activeRx.medicines || []).map((m, idx) => {
                             const isOut = (m.fulfillment || "").toUpperCase() === "OUTSIDE";
@@ -2956,9 +3335,9 @@ export default function PharmacyView() {
                                 <span>{m.name}</span>
                                 {m.dosage && <span className="text-slate-500 font-normal">({m.dosage})</span>}
                                 {isOut ? (
-                                  <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Outside</span>
+                                  <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">Outside</span>
                                 ) : (
-                                  <span className="text-[10px] font-semibold text-slate-700 bg-slate-100 px-1.5 py-0.5 rounded">Clinic</span>
+                                  <span className="text-[10px] font-bold text-[#254d90] bg-blue-50 px-1.5 py-0.5 rounded">Clinic</span>
                                 )}
                               </span>
                             );
@@ -2966,7 +3345,7 @@ export default function PharmacyView() {
                         </div>
                       </div>
                       {outsideMeds.length > 0 && (
-                        <div className="text-xs text-slate-600 bg-white px-2.5 py-1.5 rounded border border-slate-200">
+                        <div className="text-xs text-slate-600 bg-white px-2.5 py-1.5 rounded border border-slate-200 font-medium">
                           {outsideMeds.length} medicine(s) marked for Outside Chemist have been omitted from clinic dispatch.
                         </div>
                       )}
@@ -2977,15 +3356,16 @@ export default function PharmacyView() {
                 {/* Medicines To Dispense */}
                 <div className="space-y-3 pt-2">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-semibold text-slate-800">
+                    <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
                       Medicines to Dispense ({dispenseForm.items.length})
                     </span>
                     <button
                       type="button"
                       onClick={handleAddItem}
-                      className="px-3 py-1.5 text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg cursor-pointer transition"
+                      className="px-3 py-1.5 text-xs font-bold text-[#254d90] bg-[#254d90]/10 hover:bg-[#254d90]/20 rounded-lg cursor-pointer transition flex items-center gap-1.5"
                     >
-                      + Add Medicine
+                      <FiPlus size={14} />
+                      <span>Add Medicine</span>
                     </button>
                   </div>
 
@@ -3020,24 +3400,24 @@ export default function PharmacyView() {
                           {/* Item Header */}
                           <div className="flex items-center justify-between gap-2 border-b border-slate-200 pb-2">
                             <div className="flex items-center gap-2 flex-wrap min-w-0">
-                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-slate-700 text-white text-xs font-bold shrink-0">
+                              <span className="inline-flex items-center justify-center w-5 h-5 rounded-full bg-[#254d90] text-white text-xs font-bold shrink-0">
                                 {idx + 1}
                               </span>
-                              <span className="text-sm font-semibold text-slate-900 truncate max-w-[320px]">
+                              <span className="text-sm font-bold text-slate-900 truncate max-w-[320px]">
                                 {item.medicine_name || `Medicine Item #${idx + 1}`}
                               </span>
                               {item.dosage && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-700">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 text-slate-700">
                                   {item.dosage}
                                 </span>
                               )}
                               {item.duration && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-200 text-slate-700">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-semibold bg-slate-200 text-slate-700">
                                   {item.duration}
                                 </span>
                               )}
                               {item.instructions && (
-                                <span className="text-xs text-slate-500">
+                                <span className="text-xs text-slate-500 font-medium">
                                   • {item.instructions}
                                 </span>
                               )}
@@ -3065,12 +3445,12 @@ export default function PharmacyView() {
 
                           {/* Fields: Batch Selector + Qty */}
                           <div className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
-                            <div className="md:col-span-8 flex flex-col gap-1.5">
-                              <label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                            <div className="md:col-span-8 flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                                 <span>Select Batch *</span>
                                 {selectedBatch && (
-                                  <span className="text-xs text-slate-600 font-mono font-medium">
-                                    Stock: <strong>{selectedBatch.quantity_available} units</strong>
+                                  <span className="text-xs text-emerald-800 font-mono font-bold">
+                                    Stock: {selectedBatch.quantity_available} units
                                   </span>
                                 )}
                               </label>
@@ -3078,7 +3458,8 @@ export default function PharmacyView() {
                                 required
                                 value={item.batch_id}
                                 onChange={(e) => handleBatchSelect(idx, e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-medium text-slate-900 bg-white focus:border-[#254d90] outline-none"
+                                style={{ height: "40px" }}
                               >
                                 <option value="">-- Choose Stock Batch --</option>
                                 {matchingBatches.length > 0 && (
@@ -3100,12 +3481,13 @@ export default function PharmacyView() {
                               </select>
                             </div>
 
-                            <div className="md:col-span-4 flex flex-col gap-1.5">
-                              <label className="text-sm font-medium text-slate-700 flex items-center justify-between">
+                            <div className="md:col-span-4 flex flex-col gap-1">
+                              <label className="text-xs font-semibold text-slate-700 flex items-center justify-between">
                                 <span>Quantity *</span>
                                 {selectedBatch && (
-                                  <span className="text-xs text-slate-600 font-mono">
-                                    ₹{selectedBatch.selling_price || 0}/ea
+                                  <span className="text-xs text-slate-600 font-mono font-semibold inline-flex items-center gap-0.5">
+                                    <FaRupeeSign size={10} />
+                                    <span>{selectedBatch.selling_price || 0}/ea</span>
                                   </span>
                                 )}
                               </label>
@@ -3116,26 +3498,28 @@ export default function PharmacyView() {
                                 max={selectedBatch ? selectedBatch.quantity_available : 9999}
                                 value={item.quantity}
                                 onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
-                                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
+                                className="w-full px-3 py-2 rounded-lg border border-slate-300 text-xs font-mono font-bold text-slate-900 bg-white focus:border-[#254d90] outline-none text-center"
+                                style={{ height: "40px" }}
                               />
                             </div>
                           </div>
 
                           {/* Warning Banner */}
                           {!item.batch_id && matchingBatches.length === 0 && (
-                            <div className="px-3 py-2 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 text-xs">
-                              No exact matching batch found in clinic stock. Please select an available alternative batch from the dropdown or remove this item.
+                            <div className="px-3 py-2.5 rounded-lg bg-amber-50 border border-amber-200 text-amber-900 text-xs font-medium flex items-center gap-2">
+                              <FiAlertTriangle size={15} className="shrink-0 text-amber-600" />
+                              <span>No exact matching batch found in clinic stock. Please select an available alternative batch from the dropdown or remove this item.</span>
                             </div>
                           )}
 
                           {/* Line summary */}
                           {selectedBatch && (
-                            <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200 text-slate-600">
-                              <span>
-                                Unit Price: <strong className="font-mono text-slate-800">₹{selectedBatch.selling_price || 0}</strong>
+                            <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-200 text-slate-600 font-medium">
+                              <span className="inline-flex items-center gap-1">
+                                Unit Price: <strong className="font-mono text-slate-900 inline-flex items-center"><FaRupeeSign size={10} />{selectedBatch.selling_price || 0}</strong>
                               </span>
-                              <span className="font-medium text-slate-700 font-mono">
-                                Total: <strong className="text-slate-900 font-bold text-sm">₹{lineTotal.toLocaleString("en-IN")}</strong>
+                              <span className="inline-flex items-center gap-1">
+                                Line Total: <strong className="text-[#254d90] font-mono font-bold text-sm inline-flex items-center"><FaRupeeSign size={11} />{lineTotal.toLocaleString("en-IN")}</strong>
                               </span>
                             </div>
                           )}
@@ -3145,19 +3529,20 @@ export default function PharmacyView() {
                   </div>
 
                   {/* Overall Dispense Summary Bar */}
-                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-sm text-slate-700">
-                    <div className="flex items-center gap-4">
-                      <span>Total Items: <strong className="text-slate-900 font-mono font-semibold">{dispenseForm.items.length}</strong></span>
-                      <span>Total Units: <strong className="text-slate-900 font-mono font-semibold">{dispenseForm.items.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 0), 0)}</strong></span>
+                  <div className="p-3 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs text-slate-700">
+                    <div className="flex items-center gap-5">
+                      <span>Total Items: <strong className="text-slate-900 font-mono font-bold text-sm">{dispenseForm.items.length}</strong></span>
+                      <span>Total Units: <strong className="text-slate-900 font-mono font-bold text-sm">{dispenseForm.items.reduce((acc, it) => acc + (parseInt(it.quantity, 10) || 0), 0)}</strong></span>
                     </div>
                     <div className="flex items-center gap-1.5">
-                      <span className="text-slate-600">Estimated Total:</span>
-                      <strong className="text-slate-900 font-mono font-bold text-base">
-                        ₹{dispenseForm.items.reduce((acc, it) => {
+                      <span className="text-slate-600 font-medium">Estimated Total:</span>
+                      <span className="text-[#254d90] font-mono font-extrabold text-base inline-flex items-center gap-0.5">
+                        <FaRupeeSign size={13} />
+                        <span>{dispenseForm.items.reduce((acc, it) => {
                           const b = batches.find((bat) => String(bat.id) === String(it.batch_id));
                           return acc + (parseInt(it.quantity, 10) || 0) * (b ? (b.selling_price || 0) : 0);
-                        }, 0).toLocaleString("en-IN")}
-                      </strong>
+                        }, 0).toLocaleString("en-IN")}</span>
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -3165,35 +3550,36 @@ export default function PharmacyView() {
                 {/* Money Collection Panel in Dispense Modal */}
                 <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="p-1.5 rounded-lg bg-[#254d90] text-white">
-                        <FiDollarSign size={15} />
+                    <div className="flex items-center gap-2.5">
+                      <div className="p-2 rounded-lg bg-[#254d90] text-white shrink-0">
+                        <FiDollarSign size={16} />
                       </div>
                       <div>
-                        <div className="text-xs font-bold text-slate-800">
+                        <div className="text-sm font-bold text-slate-900">
                           Payment Collection at Dispensary
                         </div>
-                        <div className="text-[11px] text-slate-500">
+                        <div className="text-xs text-slate-500 font-normal">
                           Collect payment directly at the pharmacy counter
                         </div>
                       </div>
                     </div>
                     <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <span className="text-xs font-semibold text-slate-700">Collect Payment</span>
+                      <span className="text-xs font-semibold text-slate-800">Collect Payment</span>
                       <input
                         type="checkbox"
                         checked={dispenseForm.collect_payment}
                         onChange={(e) => setDispenseForm({ ...dispenseForm, collect_payment: e.target.checked })}
-                        className="w-4 h-4 cursor-pointer accent-[#254d90]"
+                        className="cursor-pointer accent-[#254d90]"
+                        style={{ width: "16px", height: "16px" }}
                       />
                     </label>
                   </div>
 
                   {dispenseForm.collect_payment ? (
-                    <div className="space-y-3 pt-2 border-t border-slate-200 animate-in fade-in duration-150">
+                    <div className="space-y-3 pt-2.5 border-t border-slate-200 animate-in fade-in duration-150">
                       {/* Payment Methods */}
                       <div>
-                        <label className="text-xs font-semibold text-slate-700 block mb-1">
+                        <label className="text-xs font-bold text-slate-700 block mb-1.5">
                           Payment Method *
                         </label>
                         <div className="grid grid-cols-4 gap-2">
@@ -3202,10 +3588,10 @@ export default function PharmacyView() {
                               key={mode}
                               type="button"
                               onClick={() => setDispenseForm({ ...dispenseForm, payment_method: mode })}
-                              className={`py-1.5 px-2 rounded-lg text-xs font-semibold border transition cursor-pointer text-center ${
+                              className={`py-2 px-3 rounded-lg text-xs font-bold border transition cursor-pointer text-center h-10 flex items-center justify-center ${
                                 dispenseForm.payment_method === mode
                                   ? "bg-[#254d90] text-white border-[#254d90] shadow-xs"
-                                  : "bg-white text-slate-700 border-slate-200 hover:bg-slate-100"
+                                  : "bg-white text-slate-700 border-slate-300 hover:bg-slate-100"
                               }`}
                             >
                               {mode === "UPI" ? "UPI / QR" : mode}
@@ -3217,38 +3603,51 @@ export default function PharmacyView() {
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {/* Amount to Collect */}
                         <div>
-                          <label className="text-xs font-semibold text-slate-700 block mb-1">
-                            Amount to Collect (₹)
+                          <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                            Amount to Collect (₹) *
                           </label>
-                          <input
-                            type="number"
-                            min="0"
-                            placeholder={String(estimatedDispenseTotal)}
-                            value={dispenseForm.amount_collected !== "" && dispenseForm.amount_collected !== undefined ? dispenseForm.amount_collected : estimatedDispenseTotal}
-                            onChange={(e) => setDispenseForm({ ...dispenseForm, amount_collected: e.target.value })}
-                            className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-sm font-bold font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                          />
+                          <div className="relative flex items-center">
+                            <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                              <FaRupeeSign size={12} />
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              placeholder={String(estimatedDispenseTotal)}
+                              value={dispenseForm.amount_collected !== "" && dispenseForm.amount_collected !== undefined ? dispenseForm.amount_collected : estimatedDispenseTotal}
+                              onChange={(e) => setDispenseForm({ ...dispenseForm, amount_collected: e.target.value })}
+                              style={{ paddingLeft: "34px", height: "40px" }}
+                              className="w-full pr-3 py-2 rounded-lg border border-slate-300 text-sm font-bold font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                            />
+                          </div>
                         </div>
 
-                        {/* If Cash: Cash Tendered & Change Return Calculator */}
+                        {/* If Cash: Cash Received & Change Return Calculator */}
                         {dispenseForm.payment_method === "Cash" ? (
                           <div>
-                            <label className="text-xs font-semibold text-slate-700 block mb-1">
-                              Cash Received &amp; Change
+                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
+                              Cash Received &amp; Change Calculator
                             </label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min="0"
-                                placeholder="Received from pt..."
-                                value={dispenseForm.cash_tendered || ""}
-                                onChange={(e) => setDispenseForm({ ...dispenseForm, cash_tendered: e.target.value })}
-                                className="w-1/2 px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                              />
-                              <div className="w-1/2 px-2 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-700 flex items-center justify-between">
-                                <span className="text-[10px] text-slate-400 font-sans">Change:</span>
-                                <span className="text-emerald-700 font-bold">
-                                  ₹{Math.max(0, (parseFloat(dispenseForm.cash_tendered) || 0) - (parseFloat(dispenseForm.amount_collected !== "" && dispenseForm.amount_collected !== undefined ? dispenseForm.amount_collected : estimatedDispenseTotal) || 0))}
+                            <div className="grid grid-cols-2 gap-2">
+                              <div className="relative flex items-center">
+                                <div className="absolute left-2.5 flex items-center pointer-events-none text-slate-400">
+                                  <FaRupeeSign size={11} />
+                                </div>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  placeholder="Amount received"
+                                  value={dispenseForm.cash_tendered || ""}
+                                  onChange={(e) => setDispenseForm({ ...dispenseForm, cash_tendered: e.target.value })}
+                                  style={{ paddingLeft: "30px", height: "40px" }}
+                                  className="w-full pr-2 py-2 rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                                />
+                              </div>
+                              <div className="px-3 py-2 bg-emerald-50/70 border border-emerald-200 rounded-lg text-xs font-mono text-emerald-900 flex items-center justify-between h-10">
+                                <span className="font-sans font-medium text-emerald-800 text-xs">Change:</span>
+                                <span className="font-bold text-sm text-emerald-900 inline-flex items-center gap-0.5">
+                                  <FaRupeeSign size={11} />
+                                  <span>{Math.max(0, (parseFloat(dispenseForm.cash_tendered) || 0) - (parseFloat(dispenseForm.amount_collected !== "" && dispenseForm.amount_collected !== undefined ? dispenseForm.amount_collected : estimatedDispenseTotal) || 0)).toLocaleString("en-IN")}</span>
                                 </span>
                               </div>
                             </div>
@@ -3256,7 +3655,7 @@ export default function PharmacyView() {
                         ) : (
                           /* Transaction Reference for UPI / Card */
                           <div>
-                            <label className="text-xs font-semibold text-slate-700 block mb-1">
+                            <label className="text-xs font-bold text-slate-700 block mb-1.5">
                               Transaction / UTR Reference
                             </label>
                             <input
@@ -3264,14 +3663,15 @@ export default function PharmacyView() {
                               placeholder="e.g. GPay / PhonePe UTR / Auth Code"
                               value={dispenseForm.transaction_ref || ""}
                               onChange={(e) => setDispenseForm({ ...dispenseForm, transaction_ref: e.target.value })}
-                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                              style={{ height: "40px", paddingLeft: "12px", paddingRight: "12px" }}
+                              className="w-full py-2 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
                             />
                           </div>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="p-2.5 bg-amber-50/70 border border-amber-200 rounded-lg text-xs text-amber-900 flex items-center justify-between">
+                    <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-lg text-xs font-medium text-amber-900 flex items-center justify-between">
                       <span>Invoice will be generated as <strong>PENDING</strong> for payment at central billing counter.</span>
                     </div>
                   )}
@@ -3290,9 +3690,8 @@ export default function PharmacyView() {
                   type="submit"
                   disabled={dispensing}
                   className="btn-submit"
-                  style={{ background: "#254d90" }}
                 >
-                  <FiCheckCircle size={15} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>
                     {dispensing
                       ? "Processing..."
@@ -3314,7 +3713,7 @@ export default function PharmacyView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "640px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -3330,8 +3729,8 @@ export default function PharmacyView() {
                 <FiX size={18} />
               </button>
             </div>
-            <form onSubmit={handleCreateMedicine} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <div className="modal-body">
+            <form onSubmit={handleCreateMedicine} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <div className="modal-body space-y-3.5" style={{ overflowY: "auto", maxHeight: "calc(92vh - 140px)", flex: 1 }}>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Medicine Code *</label>
@@ -3340,8 +3739,9 @@ export default function PharmacyView() {
                       required
                       placeholder="e.g. MED-007"
                       value={medForm.code}
-                      onChange={(e) => setMedForm({ ...medForm, code: e.target.value })}
-                      className="font-mono"
+                      onChange={(e) => setMedForm({ ...medForm, code: e.target.value.toUpperCase() })}
+                      style={{ height: "40px" }}
+                      className="font-mono font-bold"
                     />
                   </div>
                   <div className="form-group">
@@ -3351,6 +3751,7 @@ export default function PharmacyView() {
                       placeholder="e.g. Augmentin"
                       value={medForm.brand}
                       onChange={(e) => setMedForm({ ...medForm, brand: e.target.value })}
+                      style={{ height: "40px" }}
                     />
                   </div>
                 </div>
@@ -3363,6 +3764,8 @@ export default function PharmacyView() {
                     placeholder="e.g. Amoxicillin & Potassium Clavulanate"
                     value={medForm.name}
                     onChange={(e) => setMedForm({ ...medForm, name: e.target.value })}
+                    style={{ height: "40px" }}
+                    className="font-medium"
                   />
                 </div>
 
@@ -3373,6 +3776,7 @@ export default function PharmacyView() {
                     placeholder="e.g. Amoxicillin 500mg + Potassium Clavulanate 125mg"
                     value={medForm.generic_name}
                     onChange={(e) => setMedForm({ ...medForm, generic_name: e.target.value })}
+                    style={{ height: "40px" }}
                   />
                 </div>
 
@@ -3382,6 +3786,7 @@ export default function PharmacyView() {
                     <select
                       value={medForm.dosage_form}
                       onChange={(e) => setMedForm({ ...medForm, dosage_form: e.target.value })}
+                      style={{ height: "40px" }}
                     >
                       {(pharmacyOptions?.dosage_forms || [
                         "Tablet",
@@ -3408,6 +3813,7 @@ export default function PharmacyView() {
                       placeholder="e.g. 625mg"
                       value={medForm.strength}
                       onChange={(e) => setMedForm({ ...medForm, strength: e.target.value })}
+                      style={{ height: "40px" }}
                     />
                   </div>
                 </div>
@@ -3415,25 +3821,53 @@ export default function PharmacyView() {
                 <div className="form-row">
                   <div className="form-group">
                     <label>Purchase Price (₹)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={medForm.purchase_price}
-                      onChange={(e) => setMedForm({ ...medForm, purchase_price: parseInt(e.target.value) || 0 })}
-                      className="font-mono"
-                    />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={medForm.purchase_price}
+                        onChange={(e) => setMedForm({ ...medForm, purchase_price: parseFloat(e.target.value) || 0 })}
+                        style={{ paddingLeft: "32px", height: "40px" }}
+                        className="font-mono font-bold text-sm w-full rounded-lg border border-slate-300 bg-white"
+                      />
+                    </div>
                   </div>
                   <div className="form-group">
-                    <label>Selling Price (₹)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={medForm.selling_price}
-                      onChange={(e) => setMedForm({ ...medForm, selling_price: parseInt(e.target.value) || 0 })}
-                      className="font-mono"
-                    />
+                    <label>Selling Price / MRP (₹)</label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={medForm.selling_price}
+                        onChange={(e) => setMedForm({ ...medForm, selling_price: parseFloat(e.target.value) || 0 })}
+                        style={{ paddingLeft: "32px", height: "40px" }}
+                        className="font-mono font-bold text-sm w-full rounded-lg border border-slate-300 bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Gross Margin Preview */}
+                {medForm.selling_price > 0 && (
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Estimated Gross Margin / Unit:</span>
+                    <span className="font-mono font-bold text-[#254d90] text-sm inline-flex items-center gap-0.5">
+                      <FaRupeeSign size={12} />
+                      <span>{(medForm.selling_price - medForm.purchase_price).toFixed(2)}</span>
+                      <span className="text-xs text-slate-500 font-normal ml-1">
+                        ({medForm.purchase_price > 0 ? (((medForm.selling_price - medForm.purchase_price) / medForm.purchase_price) * 100).toFixed(0) : 100}%)
+                      </span>
+                    </span>
+                  </div>
+                )}
 
                 <div className="form-row">
                   <div className="form-group">
@@ -3443,6 +3877,7 @@ export default function PharmacyView() {
                       min={0}
                       value={medForm.reorder_level}
                       onChange={(e) => setMedForm({ ...medForm, reorder_level: parseInt(e.target.value) || 0 })}
+                      style={{ height: "40px" }}
                       className="font-mono"
                     />
                   </div>
@@ -3454,8 +3889,17 @@ export default function PharmacyView() {
                       max={100}
                       value={medForm.tax_percent}
                       onChange={(e) => setMedForm({ ...medForm, tax_percent: parseInt(e.target.value) || 0 })}
+                      style={{ height: "40px" }}
                       className="font-mono"
                     />
+                  </div>
+                </div>
+
+                {/* Clinical / Catalogue Info Note */}
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Newly registered medicines appear immediately in the clinic dispensary catalogue and doctor prescription templates.</span>
                   </div>
                 </div>
               </div>
@@ -3472,7 +3916,7 @@ export default function PharmacyView() {
                   type="submit"
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>Save Medicine</span>
                 </button>
               </div>
@@ -3488,7 +3932,7 @@ export default function PharmacyView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "600px" }}
+            style={{ maxWidth: "640px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -3504,8 +3948,8 @@ export default function PharmacyView() {
                 <FiX size={18} />
               </button>
             </div>
-            <form onSubmit={handleUpdateMedicine} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <div className="modal-body">
+            <form onSubmit={handleUpdateMedicine} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <div className="modal-body space-y-3.5" style={{ overflowY: "auto", maxHeight: "calc(92vh - 140px)", flex: 1 }}>
                 <div className="form-row">
                   <div className="form-group">
                     <label>Medicine Code *</label>
@@ -3514,8 +3958,9 @@ export default function PharmacyView() {
                       required
                       placeholder="e.g. MED-007"
                       value={editMedForm.code}
-                      onChange={(e) => setEditMedForm({ ...editMedForm, code: e.target.value })}
-                      className="font-mono"
+                      onChange={(e) => setEditMedForm({ ...editMedForm, code: e.target.value.toUpperCase() })}
+                      style={{ height: "40px" }}
+                      className="font-mono font-bold"
                     />
                   </div>
                   <div className="form-group">
@@ -3525,6 +3970,7 @@ export default function PharmacyView() {
                       placeholder="e.g. Augmentin"
                       value={editMedForm.brand}
                       onChange={(e) => setEditMedForm({ ...editMedForm, brand: e.target.value })}
+                      style={{ height: "40px" }}
                     />
                   </div>
                 </div>
@@ -3537,6 +3983,8 @@ export default function PharmacyView() {
                     placeholder="e.g. Amoxicillin & Potassium Clavulanate"
                     value={editMedForm.name}
                     onChange={(e) => setEditMedForm({ ...editMedForm, name: e.target.value })}
+                    style={{ height: "40px" }}
+                    className="font-medium"
                   />
                 </div>
 
@@ -3547,6 +3995,7 @@ export default function PharmacyView() {
                     placeholder="e.g. Amoxicillin 500mg + Potassium Clavulanate 125mg"
                     value={editMedForm.generic_name}
                     onChange={(e) => setEditMedForm({ ...editMedForm, generic_name: e.target.value })}
+                    style={{ height: "40px" }}
                   />
                 </div>
 
@@ -3556,6 +4005,7 @@ export default function PharmacyView() {
                     <select
                       value={editMedForm.dosage_form}
                       onChange={(e) => setEditMedForm({ ...editMedForm, dosage_form: e.target.value })}
+                      style={{ height: "40px" }}
                     >
                       {(pharmacyOptions?.dosage_forms || [
                         "Tablet",
@@ -3582,6 +4032,7 @@ export default function PharmacyView() {
                       placeholder="e.g. 625mg"
                       value={editMedForm.strength}
                       onChange={(e) => setEditMedForm({ ...editMedForm, strength: e.target.value })}
+                      style={{ height: "40px" }}
                     />
                   </div>
                 </div>
@@ -3589,25 +4040,53 @@ export default function PharmacyView() {
                 <div className="form-row">
                   <div className="form-group">
                     <label>Purchase Price (₹)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={editMedForm.purchase_price}
-                      onChange={(e) => setEditMedForm({ ...editMedForm, purchase_price: parseInt(e.target.value) || 0 })}
-                      className="font-mono"
-                    />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={editMedForm.purchase_price}
+                        onChange={(e) => setEditMedForm({ ...editMedForm, purchase_price: parseFloat(e.target.value) || 0 })}
+                        style={{ paddingLeft: "32px", height: "40px" }}
+                        className="font-mono font-bold text-sm w-full rounded-lg border border-slate-300 bg-white"
+                      />
+                    </div>
                   </div>
                   <div className="form-group">
-                    <label>Selling Price (₹)</label>
-                    <input
-                      type="number"
-                      min={0}
-                      value={editMedForm.selling_price}
-                      onChange={(e) => setEditMedForm({ ...editMedForm, selling_price: parseInt(e.target.value) || 0 })}
-                      className="font-mono"
-                    />
+                    <label>Selling Price / MRP (₹)</label>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        step="0.01"
+                        min={0}
+                        value={editMedForm.selling_price}
+                        onChange={(e) => setEditMedForm({ ...editMedForm, selling_price: parseFloat(e.target.value) || 0 })}
+                        style={{ paddingLeft: "32px", height: "40px" }}
+                        className="font-mono font-bold text-sm w-full rounded-lg border border-slate-300 bg-white"
+                      />
+                    </div>
                   </div>
                 </div>
+
+                {/* Gross Margin Preview */}
+                {editMedForm.selling_price > 0 && (
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg flex items-center justify-between text-xs">
+                    <span className="text-slate-600 font-medium">Estimated Gross Margin / Unit:</span>
+                    <span className="font-mono font-bold text-[#254d90] text-sm inline-flex items-center gap-0.5">
+                      <FaRupeeSign size={12} />
+                      <span>{(editMedForm.selling_price - editMedForm.purchase_price).toFixed(2)}</span>
+                      <span className="text-xs text-slate-500 font-normal ml-1">
+                        ({editMedForm.purchase_price > 0 ? (((editMedForm.selling_price - editMedForm.purchase_price) / editMedForm.purchase_price) * 100).toFixed(0) : 100}%)
+                      </span>
+                    </span>
+                  </div>
+                )}
 
                 <div className="form-row">
                   <div className="form-group">
@@ -3617,6 +4096,7 @@ export default function PharmacyView() {
                       min={0}
                       value={editMedForm.reorder_level}
                       onChange={(e) => setEditMedForm({ ...editMedForm, reorder_level: parseInt(e.target.value) || 0 })}
+                      style={{ height: "40px" }}
                       className="font-mono"
                     />
                   </div>
@@ -3628,8 +4108,17 @@ export default function PharmacyView() {
                       max={100}
                       value={editMedForm.tax_percent}
                       onChange={(e) => setEditMedForm({ ...editMedForm, tax_percent: parseInt(e.target.value) || 0 })}
+                      style={{ height: "40px" }}
                       className="font-mono"
                     />
+                  </div>
+                </div>
+
+                {/* Clinical / Catalogue Info Note */}
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Modifications to catalogue specifications update standard prescribing options and dispensary records.</span>
                   </div>
                 </div>
               </div>
@@ -3646,7 +4135,7 @@ export default function PharmacyView() {
                   type="submit"
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>Update Medicine</span>
                 </button>
               </div>
@@ -4123,7 +4612,7 @@ export default function PharmacyView() {
       {/* Modal: Cancel Prescription Dispatch (Mandatory Reason)    */}
       {/* ======================================================== */}
       {isCancelModalOpen && selectedRxToCancel && (
-        <div className="modal-overlay" onClick={() => !cancellingRx && setIsCancelModalOpen(false)}>
+        <div className="modal-overlay">
           <div
             className="modal-content"
             style={{ maxWidth: "520px" }}

@@ -110,6 +110,7 @@ async def create_payment_link_endpoint(
 
 
 @router.post("/razorpay-webhook")
+@router.post("/razorpay/webhook")
 async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
     """
     Razorpay Automated Confirmation Webhook.
@@ -156,10 +157,11 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
             matched_appointment = db.query(Appointment).filter(Appointment.id == int(appt_id_str)).first()
             if matched_appointment:
                 matched_appointment.payment_status = "PAID"
+                matched_appointment.status = "CONFIRMED"  # Confirm if previously PENDING
                 matched_appointment.payment_method = f"Razorpay ({pay_method})"
                 matched_appointment.paid_amount = int(amount_rupees)
                 db.commit()
-                logger.info(f"Appointment #{matched_appointment.id} marked as PAID via Razorpay webhook!")
+                logger.info(f"Appointment #{matched_appointment.id} marked as PAID & CONFIRMED via Razorpay webhook!")
 
         # 2. Update Invoice if linked or create one
         if inv_id_str and inv_id_str.isdigit():
@@ -228,7 +230,65 @@ async def razorpay_webhook(request: Request, db: Session = Depends(get_db)):
                     patient_name=patient_name,
                     message_type="payment_success_receipt",
                 )
+
+                # Phase 5: Notification Log (PAYMENT_CONFIRMATION)
+                try:
+                    from app.models import NotificationLog
+                    notif_log = NotificationLog(
+                        clinic_id=matched_appointment.clinic_id if matched_appointment else 1,
+                        appointment_id=matched_appointment.id if matched_appointment else None,
+                        patient_id=matched_appointment.patient_id if matched_appointment else None,
+                        recipient_phone=patient_phone,
+                        notification_type="PAYMENT_CONFIRMATION",
+                        status="SENT",
+                        message_body=confirmation_wa,
+                        sent_at=datetime.datetime.utcnow(),
+                    )
+                    db.add(notif_log)
+                    db.commit()
+                except Exception as ex:
+                    db.rollback()
+                    logger.debug(f"Payment confirmation notification log note: {ex}")
             except Exception as e:
                 logger.error(f"Failed to dispatch payment confirmation WhatsApp: {e}")
+
+    elif event_type in ("payment_link.cancelled", "payment_link.expired", "payment.failed"):
+        payload_data = payload.get("payload", {})
+        plink_entity = payload_data.get("payment_link", {}).get("entity", {})
+        payment_entity = payload_data.get("payment", {}).get("entity", {})
+        notes = plink_entity.get("notes", {}) or payment_entity.get("notes", {})
+        appt_id_str = notes.get("appointment_id")
+        if appt_id_str and appt_id_str.isdigit():
+            matched_appt = db.query(Appointment).filter(Appointment.id == int(appt_id_str)).first()
+            if matched_appt and matched_appt.status == "PENDING":
+                matched_appt.status = "CANCELLED"
+                matched_appt.payment_status = "FAILED"
+                db.commit()
+                logger.info(f"Released pending appointment #{matched_appt.id} due to payment expiry / failure.")
+                if matched_appt.patient and matched_appt.patient.phone:
+                    exp_msg = (
+                        f"⚠️ *APPOINTMENT RESERVATION EXPIRED*\n\n"
+                        f"Hello *{matched_appt.patient.name}*,\n"
+                        f"Your temporary reservation for Booking #{matched_appt.id} has expired or payment was not completed.\n\n"
+                        f"The slot has been released. You can type 'book' anytime to schedule a new consultation."
+                    )
+                    try:
+                        await whatsapp_client.send_text(to=matched_appt.patient.phone, text=exp_msg)
+                        from app.models import NotificationLog
+                        notif_log = NotificationLog(
+                            clinic_id=matched_appt.clinic_id,
+                            appointment_id=matched_appt.id,
+                            patient_id=matched_appt.patient_id,
+                            recipient_phone=matched_appt.patient.phone,
+                            notification_type="PAYMENT_FAILURE",
+                            status="SENT",
+                            message_body=exp_msg,
+                            sent_at=datetime.datetime.utcnow(),
+                        )
+                        db.add(notif_log)
+                        db.commit()
+                    except Exception as e:
+                        db.rollback()
+                        logger.warning(f"Could not send payment expiry notice: {e}")
 
     return {"status": "ok", "event": event_type}

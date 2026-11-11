@@ -50,6 +50,15 @@ class AbhaLinkRequest(BaseModel):
     profile_data: Optional[Dict[str, Any]] = None
 
 
+class AbhaEnterRequest(BaseModel):
+    abha_number: str
+    abha_address: Optional[str] = None
+
+
+class AbhaConsentRequest(BaseModel):
+    consent_purpose: Optional[str] = "CARE_CONTEXT_LINKAGE"
+
+
 @router.get("/status")
 def get_abdm_status(current_user: Any = Depends(get_current_user)):
     """Check configuration and connectivity of ABDM integration."""
@@ -193,6 +202,57 @@ def link_abha_to_patient(
             "abha_number": patient.abha_number,
             "abha_address": patient.abha_address,
             "abha_status": patient.abha_status,
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+
+@router.post("/enter/{patient_id}")
+def enter_abha_for_patient(
+    patient_id: int,
+    payload: AbhaEnterRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
+):
+    """Manually records an unverified ABHA number entered by patient or front desk (Phase 7)."""
+    try:
+        patient = abdm_service.enter_patient_abha(
+            db=db,
+            patient_id=patient_id,
+            abha_number=payload.abha_number,
+            abha_address=payload.abha_address,
+        )
+        return {
+            "status": "success",
+            "message": f"ABHA number recorded as ENTERED (unverified) for {patient.name}",
+            "patient_id": patient.id,
+            "abha_number": patient.abha_number,
+            "abha_status": patient.abha_status,
+        }
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+
+
+@router.post("/consent/{patient_id}")
+def record_patient_abha_consent(
+    patient_id: int,
+    payload: AbhaConsentRequest,
+    db: Session = Depends(get_db),
+    current_user: Any = Depends(get_current_user),
+):
+    """Records patient explicit consent for ABDM health data linkage (Phase 7)."""
+    try:
+        patient = abdm_service.record_patient_consent(
+            db=db,
+            patient_id=patient_id,
+            consent_purpose=payload.consent_purpose or "CARE_CONTEXT_LINKAGE",
+        )
+        return {
+            "status": "success",
+            "message": f"ABDM consent recorded for {patient.name}",
+            "patient_id": patient.id,
+            "abha_status": patient.abha_status,
+            "abha_consented_at": patient.abha_consented_at.isoformat() if patient.abha_consented_at else None,
         }
     except ValueError as ve:
         raise HTTPException(status_code=400, detail=str(ve))

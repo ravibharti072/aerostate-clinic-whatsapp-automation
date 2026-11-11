@@ -66,6 +66,18 @@ class ClinicUpdateRequest(BaseModel):
     subscription_expiry: Optional[str] = None
     subscription_expiry_date: Optional[str] = None
     subscription_status: Optional[str] = None
+    # Phase 6: Reception Handover & Clinic Information
+    google_maps_url: Optional[str] = None
+    emergency_contact: Optional[str] = None
+    departments: Optional[str] = None
+    facilities: Optional[str] = None
+    reception_phone: Optional[str] = None
+    reception_start_time: Optional[str] = None
+    reception_end_time: Optional[str] = None
+    reception_days: Optional[str] = None
+    reception_message_open: Optional[str] = None
+    reception_message_closed: Optional[str] = None
+    reception_expected_wait_mins: Optional[int] = None
 
 
 def parse_expiry_date(expiry_str: Optional[str], plan: Optional[str] = "Monthly") -> Optional[datetime.datetime]:
@@ -381,6 +393,17 @@ def get_clinic_detail(
         "has_custom_token": bool(clinic.whatsapp_token),
         "verify_token": clinic.verify_token,
         "is_active": clinic.is_active,
+        "google_maps_url": clinic.google_maps_url,
+        "emergency_contact": clinic.emergency_contact,
+        "departments": clinic.departments,
+        "facilities": clinic.facilities,
+        "reception_phone": clinic.reception_phone,
+        "reception_start_time": clinic.reception_start_time,
+        "reception_end_time": clinic.reception_end_time,
+        "reception_days": clinic.reception_days,
+        "reception_message_open": clinic.reception_message_open,
+        "reception_message_closed": clinic.reception_message_closed,
+        "reception_expected_wait_mins": clinic.reception_expected_wait_mins,
         "admin_username": admin_user.username if admin_user else None,
         "admin_name": admin_user.name if admin_user else None,
         "admin_id": admin_user.id if admin_user else None,
@@ -548,6 +571,30 @@ def update_clinic(
             clinic.subscription_expiry = None
     if payload.subscription_status is not None:
         clinic.subscription_status = payload.subscription_status.strip()
+
+    # Phase 6: Reception Handover & Clinic Information
+    if payload.google_maps_url is not None:
+        clinic.google_maps_url = payload.google_maps_url.strip() if payload.google_maps_url.strip() else None
+    if payload.emergency_contact is not None:
+        clinic.emergency_contact = payload.emergency_contact.strip() if payload.emergency_contact.strip() else None
+    if payload.departments is not None:
+        clinic.departments = payload.departments.strip() if payload.departments.strip() else None
+    if payload.facilities is not None:
+        clinic.facilities = payload.facilities.strip() if payload.facilities.strip() else None
+    if payload.reception_phone is not None:
+        clinic.reception_phone = payload.reception_phone.strip() if payload.reception_phone.strip() else None
+    if payload.reception_start_time is not None:
+        clinic.reception_start_time = payload.reception_start_time.strip()
+    if payload.reception_end_time is not None:
+        clinic.reception_end_time = payload.reception_end_time.strip()
+    if payload.reception_days is not None:
+        clinic.reception_days = payload.reception_days.strip()
+    if payload.reception_message_open is not None:
+        clinic.reception_message_open = payload.reception_message_open.strip() if payload.reception_message_open.strip() else None
+    if payload.reception_message_closed is not None:
+        clinic.reception_message_closed = payload.reception_message_closed.strip() if payload.reception_message_closed.strip() else None
+    if payload.reception_expected_wait_mins is not None:
+        clinic.reception_expected_wait_mins = payload.reception_expected_wait_mins
 
     if payload.is_active is not None:
         clinic.is_active = payload.is_active

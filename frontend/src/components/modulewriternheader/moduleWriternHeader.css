@@ -31,7 +31,7 @@
 }
 
 .module-writern-header p {
-  margin: 4px 0 0 0;
+  margin: 3px 0 0 0;
   font-size: 13px;
   color: #64748b;
   line-height: 1.4;
@@ -58,7 +58,7 @@
   color: #3b82f6;
   font-size: 12px;
   font-weight: 700;
-  padding: 4px 12px;
+  padding: 3px 10px;
   border-radius: 20px;
   white-space: nowrap;
 }

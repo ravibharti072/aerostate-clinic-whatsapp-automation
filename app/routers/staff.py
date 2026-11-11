@@ -46,8 +46,17 @@ class DutyShiftCreate(BaseModel):
 
 
 def generate_staff_uid(db: Session) -> str:
-    count = db.query(models.StaffProfile).count() + 1
-    return f"STF-{count:03d}"
+    staff_profiles = db.query(models.StaffProfile.staff_uid).all()
+    max_num = 0
+    for (uid,) in staff_profiles:
+        if uid and uid.startswith("STF-"):
+            try:
+                num = int(uid.split("-")[-1])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+    return f"STF-{max_num + 1:03d}"
 
 
 def normalize_staff_phone(phone: str) -> str:
@@ -167,22 +176,42 @@ def list_staff(
 ):
     # Auto-synchronize any Specialist Doctors into Staff Profiles if missing
     doctors = db.query(models.Doctor).all()
+    existing_names = {s.full_name for s in db.query(models.StaffProfile.full_name).all()}
+
+    # Calculate initial max_num for STF-xxx
+    staff_profiles = db.query(models.StaffProfile.staff_uid).all()
+    max_num = 0
+    for (uid,) in staff_profiles:
+        if uid and uid.startswith("STF-"):
+            try:
+                num = int(uid.split("-")[-1])
+                if num > max_num:
+                    max_num = num
+            except ValueError:
+                pass
+
+    created_any = False
     for doc in doctors:
-        exists = db.query(models.StaffProfile).filter(models.StaffProfile.full_name == doc.name).first()
-        if not exists:
-            count = db.query(models.StaffProfile).count() + 1
+        if doc.name not in existing_names:
+            max_num += 1
             stf = models.StaffProfile(
-                staff_uid=f"STF-{count:03d}",
+                staff_uid=f"STF-{max_num:03d}",
                 full_name=doc.name,
                 role_category="Doctor",
-                department=doc.specialization,
-                designation=f"Specialist ({doc.specialization})",
+                department=doc.specialization or "General OPD",
+                designation=f"Specialist ({doc.specialization or 'General'})",
                 contact_phone="Clinic Ext",
                 employment_status="ACTIVE" if doc.is_active else "ON_LEAVE",
                 joining_date=datetime.date.today().strftime("%Y-%m-%d"),
             )
             db.add(stf)
-    db.commit()
+            existing_names.add(doc.name)
+            created_any = True
+    if created_any:
+        try:
+            db.commit()
+        except Exception:
+            db.rollback()
 
     query = db.query(models.StaffProfile)
     if role and role != "ALL":

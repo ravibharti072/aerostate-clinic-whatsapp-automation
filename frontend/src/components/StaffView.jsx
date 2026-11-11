@@ -19,6 +19,7 @@ import {
   FiEdit2,
   FiPower
 } from "react-icons/fi";
+import { FaRupeeSign } from "react-icons/fa";
 import PortalHeader from "./portalheader/PortalHeader";
 import StatCard from "./statcard/StatCard";
 import ModuleWriternHeader from "./modulewriternheader/ModuleWriternHeader";
@@ -962,8 +963,9 @@ export default function StaffView({ initialTab = "directory" }) {
 
                           {/* Consultation Fee */}
                           <td style={{ fontSize: "12px", whiteSpace: "nowrap" }}>
-                            <span className="font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded">
-                              ₹{doc.consultation_fee ?? 500}
+                            <span className="font-mono font-bold text-emerald-800 bg-emerald-50 border border-emerald-200 px-2.5 py-0.5 rounded inline-flex items-center gap-0.5">
+                              <FaRupeeSign size={10} className="shrink-0" />
+                              <span>{doc.consultation_fee ?? 500}</span>
                             </span>
                           </td>
 
@@ -1235,10 +1237,10 @@ export default function StaffView({ initialTab = "directory" }) {
       {/* Modal 1: Add Staff Profile                               */}
       {/* ======================================================== */}
       {isAddStaffOpen && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={() => setIsAddStaffOpen(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "700px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1335,7 +1337,7 @@ export default function StaffView({ initialTab = "directory" }) {
                   <div className="form-group">
                     <label>Contact Phone (10 Digits) *</label>
                     <div className="relative flex items-center">
-                      <span className="absolute left-3 text-slate-500 font-bold font-mono text-xs pointer-events-none select-none">
+                      <span className="absolute left-3 text-slate-400 font-bold font-mono text-xs pointer-events-none select-none">
                         +91
                       </span>
                       <input
@@ -1397,6 +1399,14 @@ export default function StaffView({ initialTab = "directory" }) {
                     />
                   </div>
                 </div>
+
+                {/* Info Note box matching 1st page */}
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiUserCheck size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Registered staff profiles are linked to duty shifts, specialist schedules, and role access.</span>
+                  </div>
+                </div>
               </div>
 
               <div className="modal-footer">
@@ -1411,7 +1421,7 @@ export default function StaffView({ initialTab = "directory" }) {
                   type="submit"
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>{editingStaffId ? "Update Staff Profile" : "Save Staff Profile"}</span>
                 </button>
               </div>
@@ -1424,10 +1434,10 @@ export default function StaffView({ initialTab = "directory" }) {
       {/* Modal 2: Assign Duty Shift                               */}
       {/* ======================================================== */}
       {isAssignShiftOpen && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={() => setIsAssignShiftOpen(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "700px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1445,21 +1455,49 @@ export default function StaffView({ initialTab = "directory" }) {
             </div>
             <form onSubmit={handleAssignShift} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div className="modal-body">
-                <div className="form-group">
-                  <label>Select Staff Member *</label>
-                  <select
-                    required
-                    value={shiftForm.staff_id}
-                    onChange={(e) => setShiftForm({ ...shiftForm, staff_id: e.target.value })}
-                  >
-                    <option value="">-- Choose Staff Member --</option>
-                    {staffList.map((s) => (
-                      <option key={s.id} value={s.id}>
-                        {s.full_name} ({s.role_category} - {s.department})
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                {(() => {
+                  const selectedShiftStaff = staffList.find((s) => String(s.id) === String(shiftForm.staff_id));
+                  return (
+                    <div className="form-group">
+                      <label>Select Staff Member *</label>
+                      <select
+                        required
+                        value={shiftForm.staff_id}
+                        onChange={(e) => setShiftForm({ ...shiftForm, staff_id: e.target.value })}
+                      >
+                        <option value="">-- Choose Staff Member --</option>
+                        {staffList.map((s) => (
+                          <option key={s.id} value={s.id}>
+                            {s.staff_uid ? `${s.staff_uid} • ` : ""}{s.full_name} ({s.role_category} - {s.department})
+                          </option>
+                        ))}
+                      </select>
+
+                      {selectedShiftStaff && (
+                        <div className="mt-2 p-2.5 bg-blue-50/70 border border-blue-200 rounded-lg text-xs text-blue-900 flex items-center justify-between">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-full bg-[#254d90] text-white flex items-center justify-center font-bold text-xs shrink-0">
+                              {selectedShiftStaff.full_name?.charAt(0).toUpperCase() || "S"}
+                            </div>
+                            <div>
+                              <div className="font-bold text-slate-900">
+                                {selectedShiftStaff.full_name}{" "}
+                                {selectedShiftStaff.staff_uid && (
+                                  <span className="font-mono font-normal text-slate-500 text-[11px]">
+                                    ({selectedShiftStaff.staff_uid})
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[11px] text-slate-500 mt-0.5">
+                                Role: {selectedShiftStaff.role_category} • Dept: {selectedShiftStaff.department || "General"} {selectedShiftStaff.contact_phone ? `• Phone: ${selectedShiftStaff.contact_phone}` : ""}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="form-row">
                   <div className="form-group">
@@ -1517,10 +1555,21 @@ export default function StaffView({ initialTab = "directory" }) {
                   <label>Shift Notes / Coverage Area</label>
                   <input
                     type="text"
-                    placeholder="e.g. Front desk duty, Ward rounding"
+                    placeholder="e.g. Front desk duty, Ward rounding, Emergency OPD coverage"
                     value={shiftForm.notes}
                     onChange={(e) => setShiftForm({ ...shiftForm, notes: e.target.value })}
                   />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Optional notes or specific clinical area assigned for this shift.
+                  </span>
+                </div>
+
+                {/* Info Note box matching 1st page */}
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiCalendar size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Assigned duty shift will be active on the clinic roster and staff dashboard.</span>
+                  </div>
                 </div>
               </div>
 
@@ -1536,7 +1585,7 @@ export default function StaffView({ initialTab = "directory" }) {
                   type="submit"
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>Assign Shift</span>
                 </button>
               </div>

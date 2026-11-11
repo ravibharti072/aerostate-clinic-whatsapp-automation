@@ -32,6 +32,7 @@ import {
   FiList,
   FiGrid,
   FiPhone,
+  FiInfo,
 } from "react-icons/fi";
 import { FaRupeeSign } from "react-icons/fa";
 import PortalHeader from "./portalheader/PortalHeader";
@@ -2415,12 +2416,15 @@ export default function LaboratoryView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "580px" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div>
                 <h2>Add Laboratory Test</h2>
+                <div className="modal-kicker">
+                  Configure diagnostic catalogue entry, specimen requirements &amp; pricing
+                </div>
               </div>
               <button
                 type="button"
@@ -2446,13 +2450,19 @@ export default function LaboratoryView() {
                   </div>
                   <div className="form-group">
                     <label>Standard Price (₹) *</label>
-                    <input
-                      type="number"
-                      required
-                      value={testForm.price}
-                      onChange={(e) => setTestForm({ ...testForm, price: parseInt(e.target.value) || 0 })}
-                      className="font-mono"
-                    />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        required
+                        value={testForm.price}
+                        onChange={(e) => setTestForm({ ...testForm, price: parseInt(e.target.value) || 0 })}
+                        style={{ paddingLeft: "28px", height: "40px" }}
+                        className="font-mono font-bold"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2477,7 +2487,7 @@ export default function LaboratoryView() {
                           setAddCustomCatMode(!addCustomCatMode);
                           if (!addCustomCatMode) setTestForm({ ...testForm, category: "" });
                         }}
-                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer"
+                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
                         {addCustomCatMode ? "← Select List" : "+ Add New Category"}
                       </button>
@@ -2523,7 +2533,7 @@ export default function LaboratoryView() {
                           setAddCustomSampleMode(!addCustomSampleMode);
                           if (!addCustomSampleMode) setTestForm({ ...testForm, sample_type: "" });
                         }}
-                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer"
+                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
                         {addCustomSampleMode ? "← Select List" : "+ Add New Sample"}
                       </button>
@@ -2594,6 +2604,13 @@ export default function LaboratoryView() {
                     onChange={(e) => setTestForm({ ...testForm, reference_range: e.target.value })}
                   />
                 </div>
+
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Diagnostic tests added to catalogue appear instantly in OPD orders, doctor consults &amp; billing.</span>
+                  </div>
+                </div>
               </div>
 
               <div className="modal-footer">
@@ -2624,12 +2641,15 @@ export default function LaboratoryView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "560px" }}
+            style={{ maxWidth: "580px" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div>
                 <h2>Edit Diagnostic Test</h2>
+                <div className="modal-kicker">
+                  Update test code, turnaround times, reference range &amp; pricing
+                </div>
               </div>
               <button
                 type="button"
@@ -2655,13 +2675,19 @@ export default function LaboratoryView() {
                   </div>
                   <div className="form-group">
                     <label>Standard Price (₹) *</label>
-                    <input
-                      type="number"
-                      required
-                      value={editTestForm.price}
-                      onChange={(e) => setEditTestForm({ ...editTestForm, price: parseInt(e.target.value) || 0 })}
-                      className="font-mono"
-                    />
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3 flex items-center pointer-events-none text-slate-400">
+                        <FaRupeeSign size={12} />
+                      </div>
+                      <input
+                        type="number"
+                        required
+                        value={editTestForm.price}
+                        onChange={(e) => setEditTestForm({ ...editTestForm, price: parseInt(e.target.value) || 0 })}
+                        style={{ paddingLeft: "28px", height: "40px" }}
+                        className="font-mono font-bold"
+                      />
+                    </div>
                   </div>
                 </div>
 
@@ -2686,7 +2712,7 @@ export default function LaboratoryView() {
                           setEditCustomCatMode(!editCustomCatMode);
                           if (!editCustomCatMode) setEditTestForm({ ...editTestForm, category: "" });
                         }}
-                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer"
+                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
                         {editCustomCatMode ? "← Select List" : "+ Add New Category"}
                       </button>
@@ -2732,7 +2758,7 @@ export default function LaboratoryView() {
                           setEditCustomSampleMode(!editCustomSampleMode);
                           if (!editCustomSampleMode) setEditTestForm({ ...editTestForm, sample_type: "" });
                         }}
-                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer"
+                        className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer inline-flex items-center gap-1"
                       >
                         {editCustomSampleMode ? "← Select List" : "+ Add New Sample"}
                       </button>
@@ -2803,6 +2829,13 @@ export default function LaboratoryView() {
                     onChange={(e) => setEditTestForm({ ...editTestForm, reference_range: e.target.value })}
                   />
                 </div>
+
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Updates to standard test parameters apply automatically to future consultation orders.</span>
+                  </div>
+                </div>
               </div>
 
               <div className="modal-footer">
@@ -2833,7 +2866,7 @@ export default function LaboratoryView() {
         <div className="modal-overlay">
           <div
             className="modal-content"
-            style={{ maxWidth: "680px" }}
+            style={{ maxWidth: "840px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -2852,7 +2885,7 @@ export default function LaboratoryView() {
                 {/* A. Smart Patient Selector with Date Filter */}
                 {/* ------------------------------------------ */}
                 <div className="form-group mb-1">
-                  <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Select Patient *
                   </label>
 
@@ -2863,7 +2896,7 @@ export default function LaboratoryView() {
                         <div
                           className="staff-avatar shrink-0"
                           style={{
-                            background: "#334155",
+                            background: "#254d90",
                             color: "#ffffff",
                             width: "38px",
                             height: "38px",
@@ -2875,23 +2908,23 @@ export default function LaboratoryView() {
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-semibold text-slate-900 text-sm truncate">
+                            <span className="font-bold text-slate-900 text-sm truncate">
                               {selectedPatient.name}
                             </span>
-                            <span className="font-mono text-xs px-2 py-0.5 rounded bg-white text-slate-700 font-medium border border-slate-200 shrink-0">
+                            <span className="font-mono font-bold text-xs text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded border border-[#254d90]/20 shrink-0">
                               {selectedPatient.patient_uid || `PAT-${String(selectedPatient.id).padStart(4, "0")}`}
                             </span>
                             {selectedPatient.today_token_display ? (
-                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#254d90] border border-blue-200 shrink-0">
                                 {selectedPatient.today_token_display}
                               </span>
                             ) : selectedPatient.is_today ? (
-                              <span className="text-xs font-medium px-2 py-0.5 rounded bg-slate-100 text-slate-700 border border-slate-200 shrink-0">
+                              <span className="text-xs font-semibold px-2 py-0.5 rounded bg-blue-50 text-[#254d90] border border-blue-200 shrink-0">
                                 Today's Visit
                               </span>
                             ) : null}
                           </div>
-                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap">
+                          <div className="text-xs text-slate-500 mt-0.5 flex items-center gap-2 flex-wrap font-medium">
                             <span>{selectedPatient.phone_display || selectedPatient.phone}</span>
                             <span>•</span>
                             <span>{selectedPatient.gender_age_display || `${selectedPatient.gender}, ${selectedPatient.age || ""}`}</span>
@@ -2903,7 +2936,7 @@ export default function LaboratoryView() {
                       <button
                         type="button"
                         onClick={() => setCreateOrderForm({ ...createOrderForm, patient_id: "" })}
-                        className="px-3 py-1.5 rounded-lg text-xs font-medium text-slate-700 bg-white hover:bg-slate-50 border border-slate-300 transition shrink-0 cursor-pointer ml-2"
+                        className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#254d90] bg-blue-50 hover:bg-[#254d90] hover:text-white border border-blue-200 transition shrink-0 cursor-pointer ml-2"
                       >
                         Change
                       </button>
@@ -2913,14 +2946,14 @@ export default function LaboratoryView() {
                     <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
                       {/* Date Filter & Mode Selection Row */}
                       <div className="p-2 bg-slate-50 border-b border-slate-200 flex flex-wrap items-center justify-between gap-2 text-xs">
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1.5">
                           <button
                             type="button"
                             onClick={() => setPatientFilterMode("today")}
-                            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                               patientFilterMode === "today"
-                                ? "bg-slate-900 text-white"
-                                : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                ? "bg-[#254d90] text-white shadow-xs"
+                                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 font-medium"
                             }`}
                           >
                             Today's Patients
@@ -2928,10 +2961,10 @@ export default function LaboratoryView() {
                           <button
                             type="button"
                             onClick={() => setPatientFilterMode("date")}
-                            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                               patientFilterMode === "date"
-                                ? "bg-slate-900 text-white"
-                                : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                ? "bg-[#254d90] text-white shadow-xs"
+                                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 font-medium"
                             }`}
                           >
                             Select Date
@@ -2939,10 +2972,10 @@ export default function LaboratoryView() {
                           <button
                             type="button"
                             onClick={() => setPatientFilterMode("all")}
-                            className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer ${
                               patientFilterMode === "all"
-                                ? "bg-slate-900 text-white"
-                                : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-50"
+                                ? "bg-[#254d90] text-white shadow-xs"
+                                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 font-medium"
                             }`}
                           >
                             All Patients ({patients.length})
@@ -3000,19 +3033,20 @@ export default function LaboratoryView() {
                                   <div
                                     className="staff-avatar shrink-0"
                                     style={{
-                                      width: "32px",
-                                      height: "32px",
-                                      fontSize: "12px",
-                                      background: "#475569",
+                                      width: "34px",
+                                      height: "34px",
+                                      fontSize: "13px",
+                                      background: "#254d90",
                                       color: "#ffffff",
+                                      fontWeight: "700",
                                     }}
                                   >
                                     {p.name.charAt(0).toUpperCase()}
                                   </div>
                                   <div className="min-w-0">
                                     <div className="flex items-center gap-1.5 flex-wrap">
-                                      <span className="font-semibold text-slate-800 text-sm">{p.name}</span>
-                                      <span className="font-mono text-xs text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                      <span className="font-bold text-slate-900 text-sm">{p.name}</span>
+                                      <span className="font-mono font-bold text-xs text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded border border-[#254d90]/20">
                                         {p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`}
                                       </span>
                                     </div>
@@ -3025,7 +3059,7 @@ export default function LaboratoryView() {
                                 </div>
                                 <button
                                   type="button"
-                                  className="px-2.5 py-1 rounded-md text-xs font-medium text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 shrink-0"
+                                  className="px-3 py-1 rounded-md text-xs font-semibold text-[#254d90] bg-blue-50/80 hover:bg-[#254d90] hover:text-white border border-blue-200 transition cursor-pointer shrink-0"
                                 >
                                   Select
                                 </button>
@@ -3043,14 +3077,14 @@ export default function LaboratoryView() {
                 {/* ------------------------------------------ */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="form-group">
-                    <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                       Prescribing Doctor *
                     </label>
                     <select
                       value={createOrderForm.doctor_id}
                       onChange={(e) => setCreateOrderForm({ ...createOrderForm, doctor_id: e.target.value })}
                       required
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-900 bg-white focus:border-[#254d90] outline-none"
                     >
                       <option value="">-- Select Prescribing Doctor --</option>
                       {doctors.map((d) => (
@@ -3062,11 +3096,11 @@ export default function LaboratoryView() {
                   </div>
 
                   <div className="form-group">
-                    <label className="block text-sm font-semibold text-slate-800 mb-1.5">Order Priority</label>
+                    <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">Order Priority</label>
                     <select
                       value={createOrderForm.priority}
                       onChange={(e) => setCreateOrderForm({ ...createOrderForm, priority: e.target.value })}
-                      className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
+                      className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm font-medium text-slate-900 bg-white focus:border-[#254d90] outline-none"
                     >
                       <option value="ROUTINE">ROUTINE (Standard TAT)</option>
                       <option value="URGENT">URGENT (Priority Queue)</option>
@@ -3080,10 +3114,10 @@ export default function LaboratoryView() {
                 {/* ------------------------------------------ */}
                 <div className="form-group">
                   <div className="flex items-center justify-between mb-1.5">
-                    <label className="text-sm font-semibold text-slate-800">
+                    <label className="text-xs font-bold uppercase tracking-wider text-slate-700">
                       Select Diagnostic Tests *
                     </label>
-                    <span className="text-xs font-medium text-slate-600 bg-slate-100 px-2.5 py-1 rounded border border-slate-200">
+                    <span className="text-xs font-bold text-[#254d90] bg-blue-50 px-2.5 py-1 rounded-full border border-blue-200">
                       {createOrderForm.test_ids.length} selected (Total: ₹{totalSelectedPrice.toLocaleString()})
                     </span>
                   </div>
@@ -3117,10 +3151,10 @@ export default function LaboratoryView() {
                             key={cat}
                             type="button"
                             onClick={() => setOrderModalTestCategory(cat)}
-                            className={`px-2.5 py-1 rounded-md text-xs font-medium transition whitespace-nowrap cursor-pointer ${
+                            className={`px-3 py-1 rounded-md text-xs font-semibold transition whitespace-nowrap cursor-pointer ${
                               orderModalTestCategory === cat
-                                ? "bg-slate-900 text-white"
-                                : "bg-white text-slate-700 border border-slate-300 hover:bg-slate-100"
+                                ? "bg-[#254d90] text-white shadow-xs"
+                                : "bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 font-medium"
                             }`}
                           >
                             {cat}
@@ -3149,7 +3183,7 @@ export default function LaboratoryView() {
                               }}
                               className={`flex items-center justify-between p-3 rounded-lg cursor-pointer text-sm transition border ${
                                 isChecked
-                                  ? "bg-white border-slate-500 shadow-xs"
+                                  ? "bg-blue-50/40 border-[#254d90]/60 shadow-xs"
                                   : "bg-white border-slate-200 hover:border-slate-300"
                               }`}
                             >
@@ -3164,15 +3198,15 @@ export default function LaboratoryView() {
                                       : createOrderForm.test_ids.filter((id) => id !== t.id);
                                     setCreateOrderForm({ ...createOrderForm, test_ids: newIds });
                                   }}
-                                  className="w-4 h-4 rounded text-slate-900 cursor-pointer shrink-0 accent-slate-900"
+                                  className="w-4 h-4 rounded text-[#254d90] cursor-pointer shrink-0 accent-[#254d90]"
                                 />
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 flex-wrap">
-                                    <span className="font-semibold text-slate-900 text-sm">{t.name}</span>
-                                    <span className="font-mono text-xs text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shrink-0">
+                                    <span className="font-bold text-slate-900 text-sm">{t.name}</span>
+                                    <span className="font-mono font-bold text-xs text-[#254d90] bg-[#254d90]/10 px-2 py-0.5 rounded border border-[#254d90]/20 shrink-0">
                                       {t.test_code}
                                     </span>
-                                    <span className="text-xs text-slate-500 bg-slate-100 px-2 py-0.5 rounded shrink-0">
+                                    <span className="text-xs font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded border border-slate-200 shrink-0">
                                       {t.category || "General"}
                                     </span>
                                   </div>
@@ -3183,7 +3217,7 @@ export default function LaboratoryView() {
                                   </div>
                                 </div>
                               </div>
-                              <span className="font-bold text-slate-900 text-sm shrink-0 ml-2">
+                              <span className="font-bold font-mono text-[#254d90] text-sm shrink-0 ml-2">
                                 ₹{t.price}
                               </span>
                             </label>
@@ -3198,7 +3232,7 @@ export default function LaboratoryView() {
                 {/* D. Doctor's Provisional Diagnosis          */}
                 {/* ------------------------------------------ */}
                 <div className="form-group">
-                  <label className="block text-sm font-semibold text-slate-800 mb-1.5">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-slate-700 mb-1.5">
                     Doctor's Provisional Diagnosis / Clinical Indication *
                   </label>
                   <input
@@ -3207,7 +3241,7 @@ export default function LaboratoryView() {
                     value={createOrderForm.clinical_indication}
                     onChange={(e) => setCreateOrderForm({ ...createOrderForm, clinical_indication: e.target.value })}
                     required
-                    className="w-full px-3.5 py-2.5 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-slate-500 outline-none"
+                    className="w-full px-3 py-2 rounded-lg border border-slate-300 text-sm text-slate-900 bg-white focus:border-[#254d90] outline-none"
                   />
                 </div>
 
@@ -3268,18 +3302,18 @@ export default function LaboratoryView() {
                             <label className="text-[11px] font-semibold text-slate-700 block mb-1">
                               Cash Tendered (₹)
                             </label>
-                            <div className="relative">
-                              <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 font-mono text-xs select-none">
-                                ₹
-                              </span>
+                            <div className="relative flex items-center">
+                              <div className="absolute left-2.5 flex items-center pointer-events-none text-slate-400">
+                                <FaRupeeSign size={11} />
+                              </div>
                               <input
                                 type="number"
                                 min="0"
                                 placeholder="Amount received..."
                                 value={orderCashTendered}
                                 onChange={(e) => setOrderCashTendered(e.target.value)}
-                                className="w-full pl-6 pr-2.5 py-1.5 rounded-lg border border-slate-300 text-xs font-mono bg-white text-slate-900 focus:border-[#254d90] outline-none"
-                                style={{ height: "34px" }}
+                                style={{ paddingLeft: "26px", height: "36px" }}
+                                className="w-full rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white text-slate-900 focus:border-[#254d90] outline-none"
                               />
                             </div>
                           </div>

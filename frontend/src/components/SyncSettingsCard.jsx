@@ -146,8 +146,8 @@ export default function SyncSettingsCard() {
               {isOnline ? <FiWifi size={18} /> : <FiWifiOff size={18} />}
             </div>
             <div>
-              <h3 className="card-title">Real-Time Connectivity & Sync Status</h3>
-              <p className="card-subtitle">
+              <h2 className="text-[17px] font-bold text-slate-900 leading-tight">Real-Time Connectivity &amp; Sync Status</h2>
+              <p className="text-[13px] text-slate-500 mt-0.5">
                 System automatically detects internet connection and synchronizes queued data
               </p>
             </div>
@@ -156,33 +156,33 @@ export default function SyncSettingsCard() {
             type="button"
             onClick={handleManualSync}
             disabled={syncing}
-            className="portal-action-btn portal-action-btn-blue flex items-center gap-1.5"
+            className="px-4 py-2 h-[36px] bg-[#254d90] hover:bg-[#1b3a6e] text-white rounded-lg text-[13px] font-bold flex items-center gap-2 shadow-sm transition cursor-pointer"
           >
-            <FiRefreshCw size={14} className={syncing ? "animate-spin" : ""} />
+            <FiRefreshCw size={13} className={syncing ? "animate-spin" : ""} />
             <span>{syncing ? "Syncing..." : "Sync All Now"}</span>
           </button>
         </div>
 
         <div className="card-body">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3.5">
             {/* Box 1 */}
-            <div className="bg-[#122135] border border-[#1e3450] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-400 font-medium">Network State</span>
+            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-3.5 transition-all hover:border-slate-300">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11.5px] text-slate-600 font-bold tracking-wider uppercase">Network State</span>
                 <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                  className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase border ${
                     isOnline
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-amber-500/20 text-amber-300"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-amber-50 text-amber-800 border-amber-200"
                   }`}
                 >
                   {isOnline ? "Online" : "Offline"}
                 </span>
               </div>
-              <div className="text-xl font-bold text-white mb-1">
+              <div className="text-[17px] font-bold text-slate-900 mb-1 leading-snug">
                 {isOnline ? "Direct Internet Active" : "Local-Only Operation"}
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[12.5px] text-slate-600 leading-relaxed">
                 {isOnline
                   ? "Meta WhatsApp Cloud API and web services reachable."
                   : "All clinic tasks (reception, OPD, bills, rx) work 100% locally."}
@@ -190,39 +190,39 @@ export default function SyncSettingsCard() {
             </div>
 
             {/* Box 2 */}
-            <div className="bg-[#122135] border border-[#1e3450] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-400 font-medium">WhatsApp Outbox</span>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-blue-500/20 text-blue-300">
+            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-3.5 transition-all hover:border-slate-300">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11.5px] text-slate-600 font-bold tracking-wider uppercase">WhatsApp Outbox</span>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full font-bold bg-blue-50 text-blue-700 border border-blue-200">
                   {status?.whatsapp_outbox?.pending || 0} Pending
                 </span>
               </div>
-              <div className="text-xl font-bold text-white mb-1">
+              <div className="text-[17px] font-bold text-slate-900 mb-1 leading-snug">
                 {status?.whatsapp_outbox?.sent || 0} Sent
               </div>
-              <p className="text-xs text-slate-400">
+              <p className="text-[12.5px] text-slate-600 leading-relaxed">
                 Messages, prescriptions, and receipts queued during offline mode.
               </p>
             </div>
 
             {/* Box 3 */}
-            <div className="bg-[#122135] border border-[#1e3450] rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-slate-400 font-medium">Central Cloud Sync</span>
+            <div className="bg-slate-50 border border-slate-200/90 rounded-lg p-3.5 transition-all hover:border-slate-300">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[11.5px] text-slate-600 font-bold tracking-wider uppercase">Central Cloud Sync</span>
                 <span
-                  className={`text-xs px-2.5 py-0.5 rounded-full font-bold uppercase ${
+                  className={`text-[11px] px-2.5 py-0.5 rounded-full font-bold uppercase border ${
                     config.cloud_sync_enabled
-                      ? "bg-emerald-500/20 text-emerald-300"
-                      : "bg-slate-700/40 text-slate-400"
+                      ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                      : "bg-slate-100 text-slate-600 border border-slate-200"
                   }`}
                 >
                   {config.cloud_sync_enabled ? "Enabled" : "Standby"}
                 </span>
               </div>
-              <div className="text-xl font-bold text-white mb-1 truncate">
+              <div className="text-[17px] font-bold text-slate-900 mb-1 truncate leading-snug">
                 {config.cloud_sync_enabled ? "Two-Way Active" : "Local Standalone"}
               </div>
-              <p className="text-xs text-slate-400 truncate">
+              <p className="text-[12.5px] text-slate-600 truncate leading-relaxed">
                 {status?.cloud_sync?.last_cloud_sync_timestamp
                   ? `Last sync: ${new Date(status.cloud_sync.last_cloud_sync_timestamp).toLocaleTimeString()}`
                   : "No cloud sync executed yet."}
@@ -240,8 +240,8 @@ export default function SyncSettingsCard() {
               <FiCloud size={18} />
             </div>
             <div>
-              <h3 className="card-title">Two-Way Central Cloud Database Sync</h3>
-              <p className="card-subtitle">
+              <h2 className="text-[17px] font-bold text-slate-900 leading-tight">Two-Way Central Cloud Database Sync</h2>
+              <p className="text-[13px] text-slate-500 mt-0.5">
                 Synchronize offline walk-ins, consultations, and receipts with your central server
               </p>
             </div>
@@ -251,12 +251,12 @@ export default function SyncSettingsCard() {
         <form onSubmit={handleSaveConfig} className="card-body">
           <div className="space-y-4">
             {/* Toggle Enable */}
-            <div className="flex items-center justify-between p-3.5 bg-[#122135] border border-[#1e3450] rounded-xl">
+            <div className="flex items-center justify-between p-3.5 bg-slate-50 border border-slate-200 rounded-lg">
               <div>
-                <div className="text-sm font-semibold text-white">
+                <div className="text-[14px] font-bold text-slate-900">
                   Enable Cloud Server Synchronization
                 </div>
-                <div className="text-xs text-slate-400">
+                <div className="text-[12.5px] text-slate-600 mt-0.5">
                   When enabled and online, local data merges with the remote cloud database automatically
                 </div>
               </div>
@@ -272,18 +272,18 @@ export default function SyncSettingsCard() {
                   }
                   className="sr-only peer"
                 />
-                <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                <div className="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#254d90]"></div>
               </label>
             </div>
 
             {/* Inputs Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-[13px] font-semibold text-slate-800 mb-1.5">
                   Central Cloud Endpoint URL
                 </label>
                 <div className="relative">
-                  <FiServer className="absolute left-3 top-3 text-slate-500" size={15} />
+                  <FiServer className="absolute left-3 top-2.5 text-slate-400" size={15} />
                   <input
                     type="url"
                     value={config.cloud_sync_url}
@@ -294,20 +294,20 @@ export default function SyncSettingsCard() {
                       }))
                     }
                     placeholder="https://clinic-cloud.yourdomain.com"
-                    className="w-full pl-9 pr-3 py-2 bg-[#0c1624] border border-[#233a57] rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-md text-[13.5px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#254d90] focus:ring-2 focus:ring-blue-100 font-mono transition"
                   />
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[12px] text-slate-500 mt-1 font-medium">
                   Base URL of your central deployed clinic instance (without trailing slash).
                 </p>
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-[13px] font-semibold text-slate-800 mb-1.5">
                   Cloud Sync API Secret Key
                 </label>
                 <div className="relative">
-                  <FiLock className="absolute left-3 top-3 text-slate-500" size={15} />
+                  <FiLock className="absolute left-3 top-2.5 text-slate-400" size={15} />
                   <input
                     type={showApiKey ? "text" : "password"}
                     value={config.cloud_sync_api_key}
@@ -318,17 +318,17 @@ export default function SyncSettingsCard() {
                       }))
                     }
                     placeholder="Enter secret token configured on remote server"
-                    className="w-full pl-9 pr-10 py-2 bg-[#0c1624] border border-[#233a57] rounded-lg text-sm text-white placeholder-slate-500 focus:outline-none focus:border-blue-500 font-mono"
+                    className="w-full pl-9 pr-9 py-2 bg-white border border-slate-300 rounded-md text-[13.5px] text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#254d90] focus:ring-2 focus:ring-blue-100 font-mono transition"
                   />
                   <button
                     type="button"
                     onClick={() => setShowApiKey(!showApiKey)}
-                    className="absolute right-3 top-2.5 text-slate-400 hover:text-white"
+                    className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 transition"
                   >
                     {showApiKey ? <FiEyeOff size={16} /> : <FiEye size={16} />}
                   </button>
                 </div>
-                <p className="text-[11px] text-slate-500 mt-1">
+                <p className="text-[12px] text-slate-500 mt-1 font-medium">
                   Used for mutual HMAC Bearer token authorization between local and cloud.
                 </p>
               </div>
@@ -337,11 +337,11 @@ export default function SyncSettingsCard() {
             {/* Auto-Sync Interval */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-slate-300 mb-1">
+                <label className="block text-[13px] font-semibold text-slate-800 mb-1.5">
                   Auto-Sync Cycle Interval
                 </label>
                 <div className="relative">
-                  <FiClock className="absolute left-3 top-3 text-slate-500" size={15} />
+                  <FiClock className="absolute left-3 top-2.5 text-slate-400" size={15} />
                   <select
                     value={config.auto_sync_interval}
                     onChange={(e) =>
@@ -350,7 +350,7 @@ export default function SyncSettingsCard() {
                         auto_sync_interval: parseInt(e.target.value, 10),
                       }))
                     }
-                    className="w-full pl-9 pr-3 py-2 bg-[#0c1624] border border-[#233a57] rounded-lg text-sm text-white focus:outline-none focus:border-blue-500"
+                    className="w-full pl-9 pr-3 py-2 bg-white border border-slate-300 rounded-md text-[13.5px] text-slate-900 focus:outline-none focus:border-[#254d90] focus:ring-2 focus:ring-blue-100 transition"
                   >
                     <option value={15}>Every 15 Seconds (Rapid OPD updates)</option>
                     <option value={30}>Every 30 Seconds (Recommended standard)</option>
@@ -367,7 +367,7 @@ export default function SyncSettingsCard() {
               <button
                 type="submit"
                 disabled={saving}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-xs font-semibold flex items-center gap-2 shadow"
+                className="px-5 py-2 h-[38px] bg-[#254d90] hover:bg-[#1b3a6e] text-white rounded-lg text-[13.5px] font-bold flex items-center gap-2 shadow-sm transition cursor-pointer"
               >
                 <FiSave size={14} />
                 <span>{saving ? "Saving..." : "Save Sync Settings"}</span>
@@ -385,8 +385,8 @@ export default function SyncSettingsCard() {
               <FiInbox size={18} />
             </div>
             <div>
-              <h3 className="card-title">WhatsApp Offline Outbox Log</h3>
-              <p className="card-subtitle">
+              <h2 className="text-[17px] font-bold text-slate-900 leading-tight">WhatsApp Offline Outbox Log</h2>
+              <p className="text-[13px] text-slate-500 mt-0.5">
                 Queue of patient messages, prescriptions, and invoice receipts dispatched or pending delivery
               </p>
             </div>
@@ -396,7 +396,7 @@ export default function SyncSettingsCard() {
             <select
               value={outboxFilter}
               onChange={(e) => setOutboxFilter(e.target.value)}
-              className="px-2.5 py-1.5 bg-[#0c1624] border border-[#233a57] rounded-lg text-xs text-slate-300 focus:outline-none"
+              className="px-3 py-1.5 bg-white border border-slate-300 rounded-md text-[13px] font-semibold text-slate-700 focus:outline-none focus:border-[#254d90]"
             >
               <option value="">All Outbox Messages</option>
               <option value="PENDING">Pending Only</option>
@@ -408,71 +408,71 @@ export default function SyncSettingsCard() {
 
         <div className="card-body">
           {outboxItems.length === 0 ? (
-            <div className="text-center py-8 text-slate-400 text-xs">
-              <FiCheckCircle size={28} className="mx-auto text-emerald-400 mb-2" />
-              <p className="font-semibold text-slate-200">Outbox Queue is Empty</p>
-              <p className="text-slate-500 mt-0.5">
+            <div className="text-center py-8 text-slate-500">
+              <FiCheckCircle size={32} className="mx-auto text-emerald-500 mb-2.5" />
+              <p className="font-bold text-slate-800 text-[15px]">Outbox Queue is Empty</p>
+              <p className="text-slate-500 mt-1 text-[13px] max-w-sm mx-auto">
                 All patient notifications and receipts have been successfully delivered to WhatsApp.
               </p>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-xs text-left text-slate-300">
-                <thead className="text-[11px] uppercase tracking-wider text-slate-400 bg-[#0d1828] border-b border-[#1e3450]">
+            <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <table className="w-full text-[13px] text-left text-slate-700">
+                <thead className="text-[11.5px] uppercase tracking-wider text-slate-700 bg-slate-50 border-b border-slate-200 font-bold">
                   <tr>
-                    <th className="py-2.5 px-3">Recipient Phone</th>
-                    <th className="py-2.5 px-3">Message Type</th>
-                    <th className="py-2.5 px-3">Content Preview</th>
-                    <th className="py-2.5 px-3">Status</th>
-                    <th className="py-2.5 px-3">Queued At</th>
-                    <th className="py-2.5 px-3 text-right">Actions</th>
+                    <th className="py-2.5 px-3.5">Recipient Phone</th>
+                    <th className="py-2.5 px-3.5">Message Type</th>
+                    <th className="py-2.5 px-3.5">Content Preview</th>
+                    <th className="py-2.5 px-3.5">Status</th>
+                    <th className="py-2.5 px-3.5">Queued At</th>
+                    <th className="py-2.5 px-3.5 text-right">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-[#182a42]">
+                <tbody className="divide-y divide-slate-150">
                   {outboxItems.map((item) => (
-                    <tr key={item.id} className="hover:bg-[#122238]/60 transition-colors">
-                      <td className="py-2.5 px-3 font-mono font-medium text-white">
+                    <tr key={item.id} className="hover:bg-slate-50/80 transition-colors">
+                      <td className="py-3 px-3.5 font-mono font-bold text-slate-900 text-[13px]">
                         {item.recipient}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-400 uppercase text-[10px]">
+                      <td className="py-3 px-3.5 text-slate-600 uppercase text-[11px] font-bold">
                         {item.queue_type}
                       </td>
-                      <td className="py-2.5 px-3 max-w-xs truncate text-slate-300" title={item.preview}>
+                      <td className="py-3 px-3.5 max-w-xs truncate text-slate-800 text-[13px]" title={item.preview}>
                         {item.preview}
                         {item.last_error && (
-                          <div className="text-[10px] text-red-400 truncate mt-0.5">
+                          <div className="text-[11px] text-rose-600 truncate mt-0.5">
                             {item.last_error}
                           </div>
                         )}
                       </td>
-                      <td className="py-2.5 px-3">
+                      <td className="py-3 px-3.5">
                         <span
-                          className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                          className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold uppercase border ${
                             item.status === "SENT"
-                              ? "bg-emerald-500/20 text-emerald-300"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200"
                               : item.status === "PENDING"
-                              ? "bg-amber-500/20 text-amber-300"
-                              : "bg-red-500/20 text-red-300"
+                              ? "bg-amber-50 text-amber-800 border-amber-200"
+                              : "bg-rose-50 text-rose-700 border-rose-200"
                           }`}
                         >
                           {item.status}
                         </span>
                         {item.retry_count > 0 && (
-                          <span className="text-[10px] text-slate-500 ml-1">
+                          <span className="text-[11px] text-slate-500 font-medium ml-1">
                             ({item.retry_count}x)
                           </span>
                         )}
                       </td>
-                      <td className="py-2.5 px-3 text-slate-400">
+                      <td className="py-3 px-3.5 text-slate-600 text-[12px]">
                         {item.created_at ? new Date(item.created_at).toLocaleTimeString() : "—"}
                       </td>
-                      <td className="py-2.5 px-3 text-right">
+                      <td className="py-3 px-3.5 text-right">
                         <div className="flex items-center justify-end gap-1.5">
                           {item.status !== "SENT" && (
                             <button
                               type="button"
                               onClick={() => handleRetry(item.id)}
-                              className="px-2 py-1 bg-blue-600/30 hover:bg-blue-600/50 text-blue-300 rounded text-[10px] font-medium"
+                              className="px-2.5 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 rounded text-[11.5px] font-semibold transition"
                               title="Retry send now"
                             >
                               Retry
@@ -481,10 +481,10 @@ export default function SyncSettingsCard() {
                           <button
                             type="button"
                             onClick={() => handleDelete(item.id)}
-                            className="p-1 hover:bg-red-500/20 text-slate-400 hover:text-red-300 rounded"
+                            className="p-1 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded transition"
                             title="Remove from queue"
                           >
-                            <FiTrash2 size={13} />
+                            <FiTrash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -498,13 +498,13 @@ export default function SyncSettingsCard() {
       </div>
 
       {/* 4. Architecture Explainer */}
-      <div className="bg-[#0f1d30] border border-[#213752] rounded-xl p-4 text-xs text-slate-300 flex items-start gap-3">
-        <FiHelpCircle className="text-teal-400 shrink-0 mt-0.5" size={18} />
+      <div className="bg-blue-50/70 border border-blue-200/80 rounded-lg p-4 text-[13px] text-slate-700 flex items-start gap-3">
+        <FiHelpCircle className="text-[#254d90] shrink-0 mt-0.5" size={18} />
         <div>
-          <h4 className="font-semibold text-white mb-1">How Offline Operation Works</h4>
-          <p className="text-slate-400 leading-relaxed">
+          <h4 className="font-bold text-[#1e3a8a] text-[14px] mb-1">How Offline Operation Works</h4>
+          <p className="text-slate-700 leading-relaxed text-[13px]">
             When internet connectivity drops, your clinic system switches instantly to{" "}
-            <strong className="text-white">Local-First Mode</strong>. Doctors and reception staff can continue
+            <strong className="text-slate-800 font-semibold">Local-First Mode</strong>. Doctors and reception staff can continue
             creating appointments, registering patients, writing prescriptions, and printing billing receipts with zero lag.
             All outgoing WhatsApp alerts are safely staged in the local SQLite Outbox. The moment the computer reconnects
             to Wi-Fi or internet, all pending messages are dispatched to patients automatically, and local clinical records sync

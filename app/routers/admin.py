@@ -500,7 +500,14 @@ def update_appointment_status(
     if not appt:
         raise HTTPException(status_code=404, detail="Appointment not found")
 
-    appt.status = status_upper
+    if status_upper == "COMPLETED":
+        from app.services.post_appointment import post_appointment_service
+        try:
+            post_appointment_service.complete_appointment(db, appt.id)
+        except Exception:
+            appt.status = "COMPLETED"
+    else:
+        appt.status = status_upper
 
     # Bi-directional sync with active QueueEntry
     q_entries = (

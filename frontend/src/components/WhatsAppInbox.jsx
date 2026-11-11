@@ -323,12 +323,15 @@ export default function WhatsAppInbox({ onOpenBookModal }) {
             >
               <FiRotateCw size={15} className={`refresh-icon ${loadingThreads ? "spinning" : ""}`} />
             </button>
-            {onOpenBookModal && (
-              <button onClick={onOpenBookModal} className="portal-action-btn">
-                <FiPlus size={16} />
-                <span>Book Appointment</span>
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => navigate("/appointments")}
+              className="portal-action-btn flex items-center gap-1.5"
+              title="Go to Appointments Section"
+            >
+              <FiPlus size={16} />
+              <span>Book Appointment</span>
+            </button>
           </div>
         }
       />

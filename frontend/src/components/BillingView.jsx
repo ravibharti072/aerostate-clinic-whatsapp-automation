@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
-import { FaWhatsapp } from "react-icons/fa";
+import { FaWhatsapp, FaRupeeSign } from "react-icons/fa";
 import {
   FiDollarSign,
   FiSearch,
@@ -1269,6 +1269,7 @@ export default function BillingView() {
                           patient_name: matched ? matched.name : formData.patient_name,
                         });
                       }}
+                      style={{ height: "40px" }}
                       className="font-mono"
                     />
                   </div>
@@ -1280,6 +1281,7 @@ export default function BillingView() {
                       placeholder="e.g. Ravi Bharti"
                       value={formData.patient_name}
                       onChange={(e) => setFormData({ ...formData, patient_name: e.target.value })}
+                      style={{ height: "40px" }}
                     />
                   </div>
                 </div>
@@ -1287,13 +1289,13 @@ export default function BillingView() {
                 {/* Dynamic Line Items */}
                 <div className="space-y-2 border-t border-slate-100 pt-3">
                   <div className="flex items-center justify-between">
-                    <label className="text-xs font-semibold text-slate-700">Billable Services &amp; Products:</label>
+                    <label className="text-xs font-bold text-slate-700">Billable Services &amp; Products:</label>
                     <div className="flex items-center gap-2">
                       <button
                         type="button"
                         onClick={handleImportUnbilled}
                         disabled={importingUnbilled}
-                        className="text-xs font-bold text-[#126868] bg-[#126868]/10 hover:bg-[#126868]/20 px-2 py-1 rounded transition flex items-center gap-1 cursor-pointer"
+                        className="text-xs font-bold text-[#126868] bg-[#126868]/10 hover:bg-[#126868]/20 px-2.5 py-1 rounded-lg transition flex items-center gap-1 cursor-pointer"
                         title="Import unbilled consultation, lab orders, and pharmacy dispenses"
                       >
                         <FiRefreshCw size={12} className={importingUnbilled ? "animate-spin" : ""} />
@@ -1310,105 +1312,129 @@ export default function BillingView() {
                     </div>
                   </div>
 
-                  {/* Column Header Labels */}
-                  <div className="flex items-center gap-2 px-1 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                    <span className="flex-1">Service / Item Description</span>
-                    <span style={{ width: "70px", textAlign: "center", flexShrink: 0 }}>Qty</span>
-                    <span style={{ width: "110px", textAlign: "left", paddingLeft: "10px", flexShrink: 0 }}>Price (₹)</span>
-                    {formData.items.length > 1 && <span style={{ width: "28px", flexShrink: 0 }} />}
-                  </div>
-
-                  {formData.items.map((item, idx) => (
-                    <div key={idx} className="flex items-center gap-2 p-2 rounded-xl bg-slate-50 border border-slate-200">
-                      {/* 1. Service Description (Flex-1, Takes Full Remaining Width) */}
-                      <div className="flex-1" style={{ minWidth: 0 }}>
-                        <input
-                          type="text"
-                          required
-                          placeholder="Service (e.g. Dental Scaling / Doctor Consultation)"
-                          value={item.description}
-                          onChange={(e) => handleItemChange(idx, "description", e.target.value)}
-                          className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-medium text-slate-900"
-                          style={{ height: "38px", width: "100%" }}
-                        />
-                      </div>
-
-                      {/* 2. Quantity (Fixed Compact Width) */}
-                      <div style={{ width: "70px", minWidth: "70px", maxWidth: "70px", flexShrink: 0 }}>
-                        <input
-                          type="number"
-                          min="1"
-                          placeholder="Qty"
-                          value={item.quantity}
-                          onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
-                          className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-center font-bold text-slate-800"
-                          style={{ height: "38px", width: "100%" }}
-                          title="Quantity"
-                        />
-                      </div>
-
-                      {/* 3. Unit Price (Fixed Compact Width with currency indicator) */}
-                      <div style={{ width: "110px", minWidth: "110px", maxWidth: "110px", flexShrink: 0 }} className="relative flex items-center">
-                        <span className="absolute left-2.5 text-xs text-slate-400 font-bold pointer-events-none">₹</span>
-                        <input
-                          type="number"
-                          min="0"
-                          placeholder="Price"
-                          value={item.unit_price}
-                          onChange={(e) => handleItemChange(idx, "unit_price", e.target.value)}
-                          className="w-full pl-6 pr-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold text-slate-900"
-                          style={{ height: "38px", width: "100%" }}
-                          title="Unit Price in Rupees"
-                        />
-                      </div>
-
-                      {formData.items.length > 1 && (
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveItem(idx)}
-                          className="p-1.5 text-rose-500 hover:bg-rose-50 rounded-lg cursor-pointer flex-shrink-0"
-                          title="Remove line item"
-                        >
-                          <FiTrash2 size={16} />
-                        </button>
-                      )}
+                  {/* Unified Items Table Card with Aligned Headers */}
+                  <div className="rounded-xl border border-slate-200 overflow-hidden bg-white shadow-2xs">
+                    {/* Column Header Labels */}
+                    <div className="bg-slate-100/90 px-3 py-2 border-b border-slate-200 flex items-center gap-2 text-[11px] font-bold text-slate-600 uppercase tracking-wider">
+                      <span className="flex-1">Service / Item Description</span>
+                      <span style={{ width: "75px" }} className="text-center shrink-0">Qty</span>
+                      <span style={{ width: "125px" }} className="text-left pl-3 shrink-0">Price (₹)</span>
+                      {formData.items.length > 1 && <span style={{ width: "32px" }} className="shrink-0" />}
                     </div>
-                  ))}
+
+                    {/* Dynamic Line Items Rows */}
+                    <div className="divide-y divide-slate-100 p-2 space-y-2 bg-slate-50/40">
+                      {formData.items.map((item, idx) => (
+                        <div key={idx} className="flex items-center gap-2">
+                          {/* 1. Service Description */}
+                          <div className="flex-1" style={{ minWidth: 0 }}>
+                            <input
+                              type="text"
+                              required
+                              placeholder="Service (e.g. Dental Scaling / Doctor Consultation)"
+                              value={item.description}
+                              onChange={(e) => handleItemChange(idx, "description", e.target.value)}
+                              className="w-full px-3 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-medium text-slate-900 focus:border-[#254d90] outline-none"
+                              style={{ height: "38px" }}
+                            />
+                          </div>
+
+                          {/* 2. Quantity */}
+                          <div style={{ width: "75px", minWidth: "75px", maxWidth: "75px" }} className="shrink-0">
+                            <input
+                              type="number"
+                              min="1"
+                              placeholder="Qty"
+                              value={item.quantity}
+                              onChange={(e) => handleItemChange(idx, "quantity", e.target.value)}
+                              className="w-full px-2 py-1.5 rounded-lg border border-slate-300 text-xs bg-white text-center font-bold text-slate-800 focus:border-[#254d90] outline-none"
+                              style={{ height: "38px" }}
+                              title="Quantity"
+                            />
+                          </div>
+
+                          {/* 3. Unit Price with non-overlapping currency icon */}
+                          <div style={{ width: "125px", minWidth: "125px", maxWidth: "125px" }} className="relative flex items-center shrink-0">
+                            <div className="absolute left-2.5 flex items-center pointer-events-none text-slate-400">
+                              <FaRupeeSign size={11} />
+                            </div>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.01"
+                              placeholder="0.00"
+                              value={item.unit_price}
+                              onChange={(e) => handleItemChange(idx, "unit_price", e.target.value)}
+                              style={{ paddingLeft: "26px", height: "38px" }}
+                              className="w-full pr-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white font-bold font-mono text-slate-900 focus:border-[#254d90] outline-none"
+                              title="Unit Price in Rupees"
+                            />
+                          </div>
+
+                          {formData.items.length > 1 && (
+                            <div style={{ width: "32px" }} className="flex justify-center shrink-0">
+                              <button
+                                type="button"
+                                onClick={() => handleRemoveItem(idx)}
+                                className="p-1.5 text-rose-500 hover:bg-rose-50 hover:text-rose-700 rounded-lg cursor-pointer transition"
+                                title="Remove line item"
+                              >
+                                <FiTrash2 size={16} />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Discount, Tax & Summary */}
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-lg space-y-2">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2.5">
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Discount (₹)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.discount}
-                        onChange={(e) => setFormData({ ...formData, discount: Number(e.target.value) })}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
-                        style={{ height: "36px" }}
-                      />
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Discount (₹)</label>
+                      <div className="relative flex items-center">
+                        <div className="absolute left-2.5 flex items-center pointer-events-none text-slate-400">
+                          <FaRupeeSign size={11} />
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.discount}
+                          onChange={(e) => setFormData({ ...formData, discount: Number(e.target.value) })}
+                          style={{ paddingLeft: "26px", height: "38px" }}
+                          className="w-full rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                        />
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] font-semibold text-slate-600 mb-1">Tax / GST (₹)</label>
-                      <input
-                        type="number"
-                        min="0"
-                        value={formData.tax}
-                        onChange={(e) => setFormData({ ...formData, tax: Number(e.target.value) })}
-                        className="w-full px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
-                        style={{ height: "36px" }}
-                      />
+                      <label className="block text-xs font-bold text-slate-700 mb-1">Tax / GST (₹)</label>
+                      <div className="relative flex items-center">
+                        <div className="absolute left-2.5 flex items-center pointer-events-none text-slate-400">
+                          <FaRupeeSign size={11} />
+                        </div>
+                        <input
+                          type="number"
+                          min="0"
+                          value={formData.tax}
+                          onChange={(e) => setFormData({ ...formData, tax: Number(e.target.value) })}
+                          style={{ paddingLeft: "26px", height: "38px" }}
+                          className="w-full rounded-lg border border-slate-300 text-xs font-mono font-bold bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                        />
+                      </div>
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-200 flex justify-between items-center text-xs">
-                    <span className="text-slate-500 font-medium">Subtotal: ₹{calculatedSubtotal.toLocaleString()}</span>
+                  <div className="pt-2.5 border-t border-slate-200 flex justify-between items-center text-xs">
+                    <span className="text-slate-600 font-medium inline-flex items-center gap-1">
+                      Subtotal: <strong className="font-mono text-slate-900 inline-flex items-center"><FaRupeeSign size={11} />{calculatedSubtotal.toLocaleString("en-IN")}</strong>
+                    </span>
                     <div className="text-right">
-                      <span className="text-slate-500 text-xs block">Final Total Due:</span>
-                      <span className="text-base font-extrabold text-[#254d90]">
-                        ₹{calculatedTotal.toLocaleString()}
+                      <span className="text-slate-500 text-xs block font-medium">Final Total Due:</span>
+                      <span className="text-base font-mono font-extrabold text-[#254d90] inline-flex items-center gap-0.5">
+                        <FaRupeeSign size={13} />
+                        <span>{calculatedTotal.toLocaleString("en-IN")}</span>
                       </span>
                     </div>
                   </div>

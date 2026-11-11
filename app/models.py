@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from app.database import Base
 
@@ -29,6 +29,59 @@ class Clinic(Base):
     subscription_plan = Column(String(50), default="Monthly")  # Monthly, Quarterly, Annual, Custom, Trial
     subscription_expiry = Column(DateTime, nullable=True)
     subscription_status = Column(String(30), default="Active")  # Active, Trial, Expired, Suspended
+
+    # Booking & Payment Configuration (Phase 3)
+    payment_policy = Column(String(30), default="PAY_AT_CLINIC")  # PAY_AT_CLINIC, ONLINE_REQUIRED, ADVANCE_PAYMENT
+    advance_amount = Column(Integer, default=200)
+    advance_percentage = Column(Integer, nullable=True)
+    require_age = Column(Boolean, default=False)
+    require_gender = Column(Boolean, default=False)
+    require_reason = Column(Boolean, default=False)
+    payment_link_expiry_mins = Column(Integer, default=30)
+
+    # Rescheduling & Cancellation Policy (Phase 4)
+    reschedule_cutoff_hours = Column(Integer, default=2)
+    cancel_cutoff_hours = Column(Integer, default=2)
+    cancellation_policy_text = Column(String(255), default="Cancellations allowed up to 2 hours before appointment.")
+    max_reschedules = Column(Integer, default=3)
+
+    # Notifications & Automated Reminders (Phase 5)
+    timezone = Column(String(50), default="Asia/Kolkata")
+    reminder_24h_enabled = Column(Boolean, default=True)
+    reminder_2h_enabled = Column(Boolean, default=True)
+    reminder_template_24h = Column(Text, nullable=True)
+    reminder_template_2h = Column(Text, nullable=True)
+    notify_booking_confirmed = Column(Boolean, default=True)
+    notify_booking_rescheduled = Column(Boolean, default=True)
+    notify_booking_cancelled = Column(Boolean, default=True)
+    notify_payment_confirmed = Column(Boolean, default=True)
+    notify_payment_failed = Column(Boolean, default=True)
+
+    # Reception Handover & Clinic Information (Phase 6)
+    google_maps_url = Column(Text, nullable=True)
+    emergency_contact = Column(String(255), nullable=True)
+    departments = Column(Text, nullable=True)
+    facilities = Column(Text, nullable=True)
+    reception_phone = Column(String(30), nullable=True)
+    reception_start_time = Column(String(10), default="09:00")
+    reception_end_time = Column(String(10), default="18:00")
+    reception_days = Column(String(100), default="Monday,Tuesday,Wednesday,Thursday,Friday,Saturday")
+    reception_message_open = Column(Text, nullable=True)
+    reception_message_closed = Column(Text, nullable=True)
+    reception_expected_wait_mins = Column(Integer, nullable=True)
+
+    # Symptom Safety & Emergency Configuration (Phase 7)
+    emergency_keywords = Column(Text, nullable=True)  # Clinician-configured custom emergency signs
+
+    # Post-Appointment Communication & Follow-up (Phase 8)
+    feedback_enabled = Column(Boolean, default=True)
+    feedback_template = Column(Text, nullable=True)
+    followup_reminders_enabled = Column(Boolean, default=True)
+    followup_default_days = Column(Integer, default=7)
+    followup_template = Column(Text, nullable=True)
+    document_access_enabled = Column(Boolean, default=True)
+    document_token_expiry_hours = Column(Integer, default=24)
+    payment_receipt_enabled = Column(Boolean, default=True)
 
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
@@ -77,7 +130,7 @@ class Patient(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     patient_uid = Column(String(30), unique=True, index=True, nullable=True)  # e.g. PAT-2026-0001
-    phone = Column(String(30), unique=True, index=True, nullable=False)
+    phone = Column(String(30), index=True, nullable=False)
     name = Column(String(100), default="Valued Patient")
     gender = Column(String(20), default="Unspecified")
     dob = Column(String(20), nullable=True)
@@ -92,7 +145,10 @@ class Patient(Base):
     aadhaar_number = Column(String(30), nullable=True)  # Optional 12-digit UIDAI number
     abha_number = Column(String(30), unique=True, index=True, nullable=True)  # 14-digit ABHA (e.g. 91-1234-5678-9012)
     abha_address = Column(String(100), unique=True, index=True, nullable=True)  # e.g. patient@abdm
-    abha_status = Column(String(30), default="UNLINKED")  # UNLINKED, VERIFIED, PENDING
+    abha_status = Column(String(30), default="UNLINKED")  # UNLINKED, ENTERED, CONSENTED, VERIFIED
+    abha_verification_source = Column(String(50), nullable=True)  # ABDM_M1, AADHAAR_OTP, MOBILE_OTP, MANUAL
+    abha_consented_at = Column(DateTime, nullable=True)
+    abha_verified_at = Column(DateTime, nullable=True)
     abha_profile_photo = Column(Text, nullable=True)  # Base64 photo string from NHA
     abha_meta = Column(Text, default="{}")  # JSON metadata: auth tokens, gender, dob, state, health locker info
     registration_source = Column(String(30), default="Direct")  # WhatsApp, Direct
@@ -125,6 +181,14 @@ class Appointment(Base):
     payment_method = Column(String(30), default="UPI")   # Cash, UPI, Card
     paid_amount = Column(Integer, default=500)
     cabin = Column(String(50), default="Cabin 1")
+
+    # Rescheduling & Cancellation Tracking (Phase 4)
+    reschedule_count = Column(Integer, default=0)
+    previous_slot = Column(String(100), nullable=True)
+    cancelled_at = Column(DateTime, nullable=True)
+    cancellation_reason = Column(String(255), nullable=True)
+    cancellation_source = Column(String(30), nullable=True)
+
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     clinic = relationship("Clinic", backref="appointments")
@@ -148,13 +212,36 @@ class WhatsAppMessage(Base):
     clinic = relationship("Clinic", backref="whatsapp_messages")
 
 
+class ProcessedWebhookMessage(Base):
+    """Tracks processed Meta WhatsApp message IDs to enforce idempotency and prevent duplicate processing."""
+    __tablename__ = "processed_webhook_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    meta_id = Column(String(120), unique=True, index=True, nullable=False)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=True, index=True)
+    phone = Column(String(30), nullable=True, index=True)
+    message_type = Column(String(30), nullable=True)
+    processed_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    clinic = relationship("Clinic", backref="processed_messages")
+
+
 class ConversationSession(Base):
+    """Maintains conversational state scoped by clinic and patient phone number with expiration."""
     __tablename__ = "conversation_sessions"
 
-    phone = Column(String(30), primary_key=True, index=True)
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    phone = Column(String(30), index=True, nullable=False)
     step = Column(String(50), default="IDLE")
     context_data = Column(Text, default="{}")  # JSON string to hold temporary booking selections
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    clinic = relationship("Clinic", backref="conversation_sessions")
+
+    __table_args__ = (
+        UniqueConstraint("clinic_id", "phone", name="uq_clinic_phone_session"),
+    )
 
 
 class Consultation(Base):
@@ -551,3 +638,138 @@ class SyncMeta(Base):
     key = Column(String(100), unique=True, index=True, nullable=False)
     value = Column(Text, nullable=True)
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class NotificationLog(Base):
+    """Tracks scheduled reminders and event notifications with idempotency and retry audit."""
+    __tablename__ = "notification_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=True, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True, index=True)
+    recipient_phone = Column(String(30), nullable=False, index=True)
+    notification_type = Column(String(50), nullable=False, index=True)  # REMINDER_24H, REMINDER_2H, CONFIRMATION, RESCHEDULED, CANCELLED, PAYMENT_CONFIRMATION, PAYMENT_FAILURE
+    appointment_slot = Column(String(50), nullable=True, index=True)  # e.g. "2026-11-12_14:00"
+    status = Column(String(30), default="PENDING", index=True)  # PENDING, SENT, FAILED, DELIVERED, READ
+    message_body = Column(Text, nullable=False)
+    meta_message_id = Column(String(100), nullable=True, index=True)  # WhatsApp wamid
+    retry_count = Column(Integer, default=0)
+    max_retries = Column(Integer, default=3)
+    scheduled_for = Column(DateTime, nullable=True)
+    sent_at = Column(DateTime, nullable=True)
+    error_message = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    __table_args__ = (
+        UniqueConstraint("appointment_id", "notification_type", "appointment_slot", name="uq_appt_notif_slot"),
+    )
+
+
+class ReceptionHandoverRequest(Base):
+    """Tracks patient requests to connect with a human receptionist."""
+    __tablename__ = "reception_handover_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=True, index=True)
+    phone = Column(String(30), nullable=False, index=True)
+    patient_name = Column(String(100), nullable=True)
+    status = Column(String(30), default="Open", index=True)  # Open, Assigned, In Progress, Resolved, Closed
+    priority = Column(String(20), default="Normal")  # Low, Normal, High, Urgent
+    reason = Column(String(100), default="Talk to Receptionist")
+    patient_query = Column(Text, nullable=True)
+    conversation_context = Column(Text, nullable=True)
+    assigned_to = Column(String(100), nullable=True)
+    assigned_to_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    resolution_notes = Column(Text, nullable=True)
+    is_outside_working_hours = Column(Boolean, default=False)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+    resolved_at = Column(DateTime, nullable=True)
+
+    clinic = relationship("Clinic", backref="handover_requests")
+    patient = relationship("Patient", backref="handover_requests")
+    assigned_user = relationship("User", foreign_keys=[assigned_to_user_id])
+
+
+class ClinicFAQ(Base):
+    """Clinic-specific Frequently Asked Questions knowledge base."""
+    __tablename__ = "clinic_faqs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    category = Column(String(50), default="General", index=True)  # Timings, Location, Fees, Doctors, Walkin, Online, Payments, Lab, Pharmacy, Reception, General
+    question = Column(String(255), nullable=False)
+    keywords = Column(Text, nullable=True)  # Comma-separated search keywords
+    answer = Column(Text, nullable=False)
+    priority = Column(Integer, default=0)
+    is_active = Column(Boolean, default=True, index=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+    clinic = relationship("Clinic", backref="faqs")
+
+
+class PatientFeedback(Base):
+    """Patient Feedback & Consultation Rating (Phase 8)."""
+    __tablename__ = "patient_feedback"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=False, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
+    rating = Column(Integer, nullable=False)  # 1 to 5
+    rating_label = Column(String(50), nullable=True)  # "Excellent", "Good", "Average", "Needs Improvement"
+    comments = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    clinic = relationship("Clinic", backref="feedback_entries")
+    appointment = relationship("Appointment", backref="feedback_entries")
+    patient = relationship("Patient", backref="feedback_entries")
+
+
+class FollowUpSchedule(Base):
+    """Clinic-approved follow-up appointment & post-consultation reminders (Phase 8)."""
+    __tablename__ = "follow_up_schedules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    appointment_id = Column(Integer, ForeignKey("appointments.id"), nullable=False, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=True, index=True)
+    followup_date = Column(String(15), nullable=False)  # YYYY-MM-DD
+    followup_type = Column(String(50), default="RETURN_VISIT")  # RETURN_VISIT, MEDICATION_REVIEW, LAB_REVIEW, POST_CARE
+    instruction_text = Column(Text, nullable=True)  # Clinic-approved instructions only
+    status = Column(String(30), default="SCHEDULED", index=True)  # SCHEDULED, SENT, CANCELLED, COMPLETED
+    sent_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    clinic = relationship("Clinic", backref="follow_ups")
+    appointment = relationship("Appointment", backref="follow_ups")
+    patient = relationship("Patient", backref="follow_ups")
+    doctor = relationship("Doctor", backref="follow_ups")
+
+
+class DocumentAccessGrant(Base):
+    """Secure, authenticated, expiring access grants for prescriptions and lab reports (Phase 8)."""
+    __tablename__ = "document_access_grants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    clinic_id = Column(Integer, ForeignKey("clinics.id"), nullable=False, index=True)
+    patient_id = Column(Integer, ForeignKey("patients.id"), nullable=False, index=True)
+    document_type = Column(String(30), nullable=False)  # "PRESCRIPTION", "LAB_REPORT", "PAYMENT_RECEIPT"
+    document_id = Column(Integer, nullable=False)
+    token = Column(String(100), unique=True, index=True, nullable=False)
+    expires_at = Column(DateTime, nullable=False)
+    access_count = Column(Integer, default=0)
+    last_accessed_at = Column(DateTime, nullable=True)
+    is_revoked = Column(Boolean, default=False)
+    created_by = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    clinic = relationship("Clinic")
+    patient = relationship("Patient")
+
+
+

@@ -192,6 +192,28 @@ export default function PrescriptionsView() {
   const [formData, setFormData] = useState(initialFormData);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState("");
+  const [rxPatientSearch, setRxPatientSearch] = useState("");
+
+  const filteredRxPatients = useMemo(() => {
+    if (!patients || !Array.isArray(patients)) return [];
+    if (!rxPatientSearch.trim()) {
+      return patients.slice(0, 12);
+    }
+    const q = rxPatientSearch.toLowerCase().trim();
+    return patients.filter((p) => {
+      const name = (p.name || "").toLowerCase();
+      const phone = (p.phone || "").toLowerCase();
+      const uid = (p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`).toLowerCase();
+      return name.includes(q) || phone.includes(q) || uid.includes(q);
+    });
+  }, [patients, rxPatientSearch]);
+
+  const selectedRxPatient = useMemo(() => {
+    if (formData.patient_id && patients) {
+      return patients.find((p) => p.id === formData.patient_id) || null;
+    }
+    return null;
+  }, [formData.patient_id, patients]);
 
   // View / Print Modal
   const [selectedRx, setSelectedRx] = useState(null);
@@ -523,6 +545,7 @@ export default function PrescriptionsView() {
     setIsCreateOpen(false);
     setFormError("");
     setFormData(initialFormData);
+    setRxPatientSearch("");
     setShowVitalsInQuick(false);
     setLinkedEncounter(null);
     if (window.location.search) {
@@ -1772,8 +1795,8 @@ export default function PrescriptionsView() {
               </div>
             )}
 
-            <form onSubmit={handleCreatePrescription} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
-              <div className="modal-body space-y-4">
+            <form onSubmit={handleCreatePrescription} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0, overflow: "hidden" }}>
+              <div className="modal-body space-y-4" style={{ overflowY: "auto", maxHeight: "calc(92vh - 140px)", flex: 1 }}>
                 {/* Active Edit Mode Banner */}
                 {formData.id && (
                   <div className="flex items-center justify-between px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 shadow-2xs">
@@ -1792,21 +1815,21 @@ export default function PrescriptionsView() {
                 {!formData.encounter_id && (
                   <div className="bg-slate-50 border border-slate-200 p-2.5 rounded-xl space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">
                         Prescription Workflow Mode:
                       </span>
                       {formData.prescription_mode === "QUICK_REFILL" && (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs">
                           Direct Refill • Bypasses Queue
                         </span>
                       )}
                       {formData.prescription_mode === "TELE_CONSULT" && (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs">
                           Telephonic / Remote Advice
                         </span>
                       )}
                       {formData.prescription_mode === "IN_PERSON" && (
-                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs">
+                        <span className="text-xs font-semibold px-2 py-0.5 rounded bg-white text-slate-700 border border-slate-200 shadow-2xs">
                           Cabin Examination Visit
                         </span>
                       )}
@@ -1835,7 +1858,7 @@ export default function PrescriptionsView() {
                           <div className={`text-xs font-bold ${formData.prescription_mode === "IN_PERSON" ? "text-[#254d90]" : "text-slate-800"}`}>
                             In-Person Visit
                           </div>
-                          <div className="text-[10.5px] text-slate-500">
+                          <div className="text-[11px] text-slate-500">
                             Patient in doctor cabin with exam
                           </div>
                         </div>
@@ -1863,7 +1886,7 @@ export default function PrescriptionsView() {
                           <div className={`text-xs font-bold ${formData.prescription_mode === "QUICK_REFILL" ? "text-[#254d90]" : "text-slate-800"}`}>
                             Quick Refill / Repeat Rx
                           </div>
-                          <div className="text-[10.5px] text-slate-500">
+                          <div className="text-[11px] text-slate-500">
                             Chronic repeat • Straight to Pharmacy
                           </div>
                         </div>
@@ -1891,7 +1914,7 @@ export default function PrescriptionsView() {
                           <div className={`text-xs font-bold ${formData.prescription_mode === "TELE_CONSULT" ? "text-[#254d90]" : "text-slate-800"}`}>
                             Telephonic / Remote Rx
                           </div>
-                          <div className="text-[10.5px] text-slate-500">
+                          <div className="text-[11px] text-slate-500">
                             Phone / WhatsApp SOS guidance
                           </div>
                         </div>
@@ -1904,7 +1927,7 @@ export default function PrescriptionsView() {
                         <span>
                           <strong className="text-slate-900">Cabin Consultation:</strong> Doctor physically evaluates patient. Full vitals, complaints, and diagnosis are logged.
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0 ml-2">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0 ml-2">
                           Standard Exam
                         </span>
                       </div>
@@ -1914,7 +1937,7 @@ export default function PrescriptionsView() {
                         <span>
                           <strong className="text-slate-900">Direct Repeat Refill:</strong> Prescribed without cabin visit. Patient Name &amp; Vitals are optional. Prescription bypasses queue straight to Pharmacy.
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0 ml-2">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0 ml-2">
                           Queue Bypassed
                         </span>
                       </div>
@@ -1924,7 +1947,7 @@ export default function PrescriptionsView() {
                         <span>
                           <strong className="text-slate-900">Telephonic Advice:</strong> Prescribed remotely via Phone / WhatsApp. Patient Name is optional. Digital prescription PDF will be sent to patient's WhatsApp.
                         </span>
-                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0 ml-2">
+                        <span className="text-[11px] font-semibold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200 shrink-0 ml-2">
                           Remote Slip
                         </span>
                       </div>
@@ -2005,143 +2028,265 @@ export default function PrescriptionsView() {
                 {(!formData.encounter_id || showAllFields) && (
                   <div className="space-y-3.5 p-3.5 bg-slate-50 border border-slate-200 rounded-xl animate-in fade-in duration-100">
                     {/* Patient & Doctor Selection */}
-                    <div className="form-row-3">
-                      {/* Patient Name with Search Dropdown */}
-                      <div className="form-group relative">
-                        <label className="font-semibold text-slate-700 flex items-center justify-between">
-                          <span>
-                            Patient Name{" "}
-                            {formData.prescription_mode === "QUICK_REFILL" || formData.prescription_mode === "TELE_CONSULT" ? (
-                              <span className="text-xs font-semibold text-slate-500">(Optional)</span>
-                            ) : (
-                              "*"
-                            )}
-                          </span>
-                          {!formData.patient_name && (
-                            formData.prescription_mode === "QUICK_REFILL" ? (
-                              <span className="text-[11px] font-medium text-slate-400">Defaults to Walk-in</span>
-                            ) : formData.prescription_mode === "TELE_CONSULT" ? (
-                              <span className="text-[11px] font-medium text-slate-400">Defaults to Telephonic</span>
-                            ) : null
-                          )}
-                        </label>
-                        <input
-                          type="text"
-                          required={formData.prescription_mode === "IN_PERSON"}
-                          placeholder={
-                            formData.prescription_mode === "QUICK_REFILL"
-                              ? "Optional: Leave blank for Walk-in Refill..."
-                              : formData.prescription_mode === "TELE_CONSULT"
-                              ? "Optional: Leave blank for Telephonic Patient..."
-                              : "Type name to search or enter new..."
-                          }
-                          value={formData.patient_name}
-                          onFocus={() => setPatientSearchFocus(true)}
-                          onBlur={() => {
-                            setTimeout(() => setPatientSearchFocus(false), 250);
-                          }}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setFormData((prev) => ({
-                              ...prev,
-                              patient_name: val,
-                              patient_id: null,
-                            }));
-                            setPatientSearchFocus(true);
-                          }}
-                          className="text-sm font-semibold bg-white"
-                          autoComplete="off"
-                        />
-
-                        {/* Searchable Autocomplete Dropdown */}
-                        {patientSearchFocus && formData.patient_name && (
-                          <div
-                            className="absolute left-0 right-0 top-full mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-50 max-h-56 overflow-y-auto divide-y divide-slate-100"
-                            style={{ minWidth: "260px" }}
-                          >
-                            {patients
-                              .filter((p) =>
-                                (p.name || "").toLowerCase().includes(formData.patient_name.toLowerCase()) ||
-                                (p.phone && p.phone.includes(formData.patient_name)) ||
-                                (p.patient_uid && p.patient_uid.toLowerCase().includes(formData.patient_name.toLowerCase()))
-                              )
-                              .slice(0, 6)
-                              .map((p) => (
-                                <button
-                                  key={p.id}
-                                  type="button"
-                                  onMouseDown={(e) => {
-                                    e.preventDefault();
-                                    const activePending = prescriptions.find(
-                                      (rx) => rx.patient_id === p.id && !rx.is_dispensed
-                                    );
-                                    if (activePending && !formData.id) {
-                                      handleEditPrescription(activePending);
-                                      showToast(`Loaded active prescription #${activePending.prescription_uid || activePending.id} for ${p.name}`, "info");
-                                      setPatientSearchFocus(false);
-                                      return;
-                                    }
-                                    setFormData((prev) => ({
-                                      ...prev,
-                                      patient_id: p.id,
-                                      patient_name: p.name,
-                                      patient_phone: p.phone && !p.phone.includes("00000") ? p.phone : "",
-                                    }));
-                                    setPatientSearchFocus(false);
-                                  }}
-                                  className="w-full px-3 py-2 text-left hover:bg-blue-50 transition cursor-pointer flex items-center justify-between gap-2"
-                                >
-                                  <div>
-                                    <div className="text-xs font-bold text-slate-900">{p.name}</div>
-                                    <div className="text-[10.5px] text-slate-500 font-mono">
-                                      {p.patient_uid} {p.phone && !p.phone.includes("00000") ? `• ${p.phone_display || p.phone}` : ""}
-                                    </div>
-                                  </div>
-                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 shrink-0">
-                                    Existing Patient
+                    <div className="space-y-3">
+                      {selectedRxPatient || formData.patient_id ? (
+                        /* Selected Patient from Directory Banner */
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 items-center">
+                          <div className="p-3 bg-blue-50/60 border border-blue-200/80 rounded-xl flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div
+                                className="shrink-0 rounded-full flex items-center justify-center font-bold text-white shadow-xs"
+                                style={{
+                                  width: "38px",
+                                  height: "38px",
+                                  fontSize: "14px",
+                                  background: "#254d90",
+                                }}
+                              >
+                                {formData.patient_name ? formData.patient_name.charAt(0).toUpperCase() : "P"}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-slate-900 text-sm truncate">
+                                    {formData.patient_name}
                                   </span>
-                                </button>
-                              ))}
+                                  <span className="font-mono font-bold text-xs text-[#254d90] bg-white px-2 py-0.5 rounded border border-[#254d90]/30 shrink-0">
+                                    {selectedRxPatient?.patient_uid || `PAT-${String(formData.patient_id).padStart(4, "0")}`}
+                                  </span>
+                                </div>
+                                <div className="text-xs text-slate-600 mt-0.5 flex items-center gap-2 flex-wrap font-medium">
+                                  <span>{formData.patient_phone || selectedRxPatient?.phone || "No phone"}</span>
+                                  {selectedRxPatient && (selectedRxPatient.gender || selectedRxPatient.age) && (
+                                    <>
+                                      <span>•</span>
+                                      <span>{[selectedRxPatient.gender, selectedRxPatient.age ? `${selectedRxPatient.age} yrs` : null].filter(Boolean).join(", ")}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({
+                                  ...prev,
+                                  patient_id: null,
+                                  patient_name: "",
+                                  patient_phone: "",
+                                }));
+                                setRxPatientSearch("");
+                              }}
+                              className="px-3 py-1.5 rounded-lg text-xs font-semibold text-[#254d90] bg-white hover:bg-[#254d90] hover:text-white border border-[#254d90]/30 transition shrink-0 cursor-pointer shadow-xs"
+                            >
+                              Change Patient
+                            </button>
+                          </div>
 
-                            {!patients.some((p) => (p.name || "").toLowerCase() === formData.patient_name.trim().toLowerCase()) && (
-                              <div className="px-3 py-2 text-xs text-slate-600 bg-slate-50 flex items-center justify-between">
-                                <span>Register <strong>"{formData.patient_name}"</strong> as new</span>
-                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">
-                                  New in DB
+                          {/* Consulting Doctor */}
+                          <div className="form-group mb-0">
+                            <label className="text-xs font-bold text-slate-700 block mb-1">Consulting Doctor *</label>
+                            <select
+                              value={formData.doctor_id}
+                              onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
+                              style={{ height: "42px" }}
+                              className="bg-white font-medium w-full rounded-lg border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#254d90]"
+                            >
+                              {doctors.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name} ({d.specialization})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ) : formData.patient_name && !formData.patient_id ? (
+                        /* Walk-in / Unregistered Patient */
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 items-center">
+                          <div className="p-3 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center justify-between gap-2">
+                            <div className="min-w-0">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-slate-900 text-sm truncate">{formData.patient_name}</span>
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-300">
+                                  Walk-in
                                 </span>
                               </div>
-                            )}
+                              <div className="text-[11px] text-slate-500">Unregistered patient</div>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData((prev) => ({ ...prev, patient_name: "", patient_phone: "" }));
+                                setRxPatientSearch("");
+                              }}
+                              className="text-xs font-semibold text-amber-900 hover:underline px-2 py-1"
+                            >
+                              Change
+                            </button>
                           </div>
-                        )}
-                      </div>
 
-                      {/* Patient Phone (Optional) */}
-                      <div className="form-group">
-                        <label className="font-semibold text-slate-700">Patient Phone (Optional)</label>
-                        <input
-                          type="text"
-                          placeholder="e.g. +91 98112 23344 (Optional)"
-                          value={formData.patient_phone}
-                          onChange={(e) => setFormData({ ...formData, patient_phone: e.target.value })}
-                          className="font-mono text-sm bg-white"
-                        />
-                      </div>
+                          <div className="form-group mb-0">
+                            <label className="text-xs font-bold text-slate-700 block mb-1">Patient Phone (Optional)</label>
+                            <input
+                              type="text"
+                              placeholder="e.g. +91 98112 23344"
+                              value={formData.patient_phone}
+                              onChange={(e) => setFormData({ ...formData, patient_phone: e.target.value })}
+                              style={{ height: "42px" }}
+                              className="font-mono bg-white text-xs w-full rounded-lg border border-slate-300"
+                            />
+                          </div>
 
-                      {/* Consulting Doctor */}
-                      <div className="form-group">
-                        <label className="font-semibold text-slate-700">Consulting Doctor *</label>
-                        <select
-                          value={formData.doctor_id}
-                          onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
-                          className="text-sm font-semibold bg-white"
-                        >
-                          {doctors.map((d) => (
-                            <option key={d.id} value={d.id}>
-                              {d.name} ({d.specialization})
-                            </option>
-                          ))}
-                        </select>
-                      </div>
+                          <div className="form-group mb-0">
+                            <label className="text-xs font-bold text-slate-700 block mb-1">Consulting Doctor *</label>
+                            <select
+                              value={formData.doctor_id}
+                              onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
+                              style={{ height: "42px" }}
+                              className="bg-white font-medium w-full rounded-lg border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#254d90]"
+                            >
+                              {doctors.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name} ({d.specialization})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      ) : (
+                        /* No Patient Selected: Search Interface + Doctor Dropdown */
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div className="sm:col-span-2 space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700 block">
+                                Select Patient {formData.prescription_mode === "IN_PERSON" ? "*" : "(Optional for Refill / Remote)"}
+                              </label>
+                              <span className="text-[11px] text-slate-500 font-medium">
+                                {patients.length} registered patients
+                              </span>
+                            </div>
+
+                            <div className="relative flex items-center">
+                              <FiSearch className="absolute left-3 text-slate-400 pointer-events-none" size={15} />
+                              <input
+                                type="text"
+                                placeholder="Search patient by name, mobile, or PAT UID..."
+                                value={rxPatientSearch}
+                                onChange={(e) => setRxPatientSearch(e.target.value)}
+                                style={{ paddingLeft: "34px", paddingRight: "32px", height: "40px" }}
+                                className="w-full rounded-lg border border-slate-300 text-xs md:text-sm bg-white text-slate-900 focus:border-[#254d90] outline-none"
+                              />
+                              {rxPatientSearch && (
+                                <button
+                                  type="button"
+                                  onClick={() => setRxPatientSearch("")}
+                                  className="absolute right-2.5 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                                >
+                                  <FiX size={14} />
+                                </button>
+                              )}
+                            </div>
+
+                            {/* Dropdown list of matching patients */}
+                            <div className="max-h-40 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-lg bg-white shadow-xs">
+                              {filteredRxPatients.length === 0 ? (
+                                <div className="p-3 text-center text-xs text-slate-500">
+                                  {rxPatientSearch ? `No registered patients matching "${rxPatientSearch}"` : "No patients found in directory."}
+                                </div>
+                              ) : (
+                                filteredRxPatients.map((p) => (
+                                  <div
+                                    key={p.id}
+                                    onClick={() => {
+                                      const activePending = prescriptions.find((rx) => rx.patient_id === p.id && !rx.is_dispensed);
+                                      if (activePending && !formData.id) {
+                                        handleEditPrescription(activePending);
+                                        showToast(`Loaded active prescription #${activePending.prescription_uid || activePending.id} for ${p.name}`, "info");
+                                        return;
+                                      }
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        patient_id: p.id,
+                                        patient_name: p.name,
+                                        patient_phone: p.phone && !p.phone.includes("00000") ? p.phone : "",
+                                      }));
+                                      setRxPatientSearch("");
+                                    }}
+                                    className="p-2 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition"
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0">
+                                      <div
+                                        className="shrink-0 rounded-full flex items-center justify-center font-bold text-white"
+                                        style={{
+                                          width: "28px",
+                                          height: "28px",
+                                          fontSize: "11px",
+                                          background: "#254d90",
+                                        }}
+                                      >
+                                        {p.name ? p.name.charAt(0).toUpperCase() : "P"}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                          <span className="font-bold text-slate-900 text-xs">{p.name}</span>
+                                          <span className="font-mono font-bold text-[10px] text-[#254d90] bg-[#254d90]/10 px-1.5 py-0.2 rounded border border-[#254d90]/20">
+                                            {p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`}
+                                          </span>
+                                        </div>
+                                        <div className="text-[10.5px] text-slate-500">
+                                          {p.phone_display || p.phone}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      className="px-2.5 py-1 rounded text-xs font-semibold text-[#254d90] bg-blue-50 hover:bg-[#254d90] hover:text-white border border-blue-200 transition shrink-0 cursor-pointer"
+                                    >
+                                      Select
+                                    </button>
+                                  </div>
+                                ))
+                              )}
+
+                              {/* Walk-in unregistered patient option */}
+                              {rxPatientSearch.trim() && (
+                                <div
+                                  onClick={() => {
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      patient_id: null,
+                                      patient_name: rxPatientSearch.trim(),
+                                    }));
+                                    setRxPatientSearch("");
+                                  }}
+                                  className="p-2 text-xs text-blue-700 bg-blue-50/50 hover:bg-blue-50 flex items-center justify-between cursor-pointer transition"
+                                >
+                                  <span>Write for unregistered patient <strong>"{rxPatientSearch.trim()}"</strong></span>
+                                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800">
+                                    Walk-in
+                                  </span>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Consulting Doctor */}
+                          <div className="form-group mb-0">
+                            <label className="text-xs font-bold text-slate-700 block mb-1.5">Consulting Doctor *</label>
+                            <select
+                              value={formData.doctor_id}
+                              onChange={(e) => setFormData({ ...formData, doctor_id: e.target.value })}
+                              style={{ height: "40px" }}
+                              className="bg-white font-medium w-full rounded-lg border border-slate-300 text-xs text-slate-800 outline-none focus:border-[#254d90]"
+                            >
+                              {doctors.map((d) => (
+                                <option key={d.id} value={d.id}>
+                                  {d.name} ({d.specialization})
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                      )}
                     </div>
 
                     {/* Vitals Grid (Auto-collapsible for Quick Refill / Remote Rx) */}
@@ -2167,32 +2312,32 @@ export default function PrescriptionsView() {
                             placeholder="BP (e.g. 120/80)"
                             value={formData.vitals.bp}
                             onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, bp: e.target.value } })}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
-                            style={{ height: "36px" }}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs md:text-[13px] bg-white font-medium"
+                            style={{ height: "38px" }}
                           />
                           <input
                             type="text"
                             placeholder="Pulse (e.g. 74 bpm)"
                             value={formData.vitals.pulse}
                             onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, pulse: e.target.value } })}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
-                            style={{ height: "36px" }}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs md:text-[13px] bg-white font-medium"
+                            style={{ height: "38px" }}
                           />
                           <input
                             type="text"
                             placeholder="Temp (e.g. 98.6 F)"
                             value={formData.vitals.temp}
                             onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, temp: e.target.value } })}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
-                            style={{ height: "36px" }}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs md:text-[13px] bg-white font-medium"
+                            style={{ height: "38px" }}
                           />
                           <input
                             type="text"
                             placeholder="Weight (e.g. 68 kg)"
                             value={formData.vitals.weight}
                             onChange={(e) => setFormData({ ...formData, vitals: { ...formData.vitals, weight: e.target.value } })}
-                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs bg-white"
-                            style={{ height: "36px" }}
+                            className="px-2.5 py-1.5 rounded-lg border border-slate-300 text-xs md:text-[13px] bg-white font-medium"
+                            style={{ height: "38px" }}
                           />
                         </div>
                       </div>
@@ -2251,7 +2396,7 @@ export default function PrescriptionsView() {
                                 key={diag}
                                 type="button"
                                 onClick={() => setFormData({ ...formData, diagnosis: diag })}
-                                className="text-[10.5px] px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer font-medium shadow-2xs"
+                                className="text-xs px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer font-medium shadow-2xs"
                               >
                                 + {diag}
                               </button>
@@ -2264,7 +2409,7 @@ export default function PrescriptionsView() {
                                 key={diag}
                                 type="button"
                                 onClick={() => setFormData({ ...formData, diagnosis: diag })}
-                                className="text-[10.5px] px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer font-medium shadow-2xs"
+                                className="text-xs px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer font-medium shadow-2xs"
                               >
                                 + {diag}
                               </button>
@@ -2278,7 +2423,7 @@ export default function PrescriptionsView() {
                                   key={diag}
                                   type="button"
                                   onClick={() => setFormData({ ...formData, diagnosis: diag })}
-                                  className="text-[10.5px] px-2 py-0.5 rounded-md bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer font-medium shadow-2xs"
+                                  className="text-xs px-2.5 py-1 rounded-md bg-white hover:bg-slate-100 text-slate-700 hover:text-slate-900 border border-slate-200 transition cursor-pointer font-medium shadow-2xs"
                                 >
                                   + {diag}
                                 </button>
@@ -2314,10 +2459,10 @@ export default function PrescriptionsView() {
                 )}
 
                 {/* 3. Primary Focused Section: Prescribed Medications (Rx) */}
-                <div className="space-y-3.5 border-t border-slate-200 pt-3.5">
+                <div className="space-y-3 border-t border-slate-200 pt-3">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5">
                     <div className="flex items-center gap-2">
-                      <span className="text-base font-extrabold text-slate-900">
+                      <span className="text-sm font-bold text-slate-800">
                         Prescribed Medications (Rx)
                       </span>
                       {(() => {
@@ -2326,11 +2471,11 @@ export default function PrescriptionsView() {
                         const outsideC = validMeds.filter((m) => m.fulfillment === "OUTSIDE").length;
                         return (
                           <div className="flex items-center gap-1.5">
-                            <span className="text-xs font-mono font-bold text-slate-700 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                            <span className="text-xs font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
                               {clinicC} Clinic
                             </span>
                             {outsideC > 0 && (
-                              <span className="text-xs font-mono font-bold text-slate-700 bg-white px-2.5 py-0.5 rounded-md border border-slate-200 shadow-2xs">
+                              <span className="text-xs font-mono font-bold text-slate-700 bg-white px-2 py-0.5 rounded-md border border-slate-200 shadow-2xs">
                                 {outsideC} Outside
                               </span>
                             )}
@@ -2364,7 +2509,7 @@ export default function PrescriptionsView() {
                       {/* Pharmacy Catalogue Dropdown Selector */}
                       {pharmacyMedicines.length > 0 && (
                         <select
-                          style={{ width: "auto", minWidth: "210px", maxWidth: "290px", height: "36px", padding: "0 10px" }}
+                          style={{ width: "auto", minWidth: "160px", maxWidth: "220px", height: "38px", padding: "0 10px" }}
                           className="px-3 py-1 text-xs font-semibold rounded-lg bg-white text-slate-700 border border-slate-300 hover:border-slate-400 transition cursor-pointer outline-none truncate shadow-2xs"
                           onChange={(e) => {
                             const val = e.target.value;
@@ -2387,10 +2532,10 @@ export default function PrescriptionsView() {
                       <button
                         type="button"
                         onClick={() => handleAddMedicine("CLINIC")}
-                        style={{ height: "36px", backgroundColor: "#254d90" }}
-                        className="px-3.5 text-xs font-bold rounded-lg text-white hover:bg-[#1b396b] transition flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
+                        style={{ height: "38px" }}
+                        className="btn-submit text-xs font-bold px-3.5 py-1.5 flex items-center gap-1.5 cursor-pointer shadow-xs shrink-0"
                       >
-                        <FiPlus size={14} />
+                        <FiPlus size={14} className="shrink-0" />
                         <span>Add Medicine</span>
                       </button>
                     </div>
@@ -2398,7 +2543,7 @@ export default function PrescriptionsView() {
 
                   {/* Quick-Select Popular Medications Strip */}
                   <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg space-y-1.5">
-                    <span className="text-[11px] font-bold text-slate-600 uppercase tracking-wide block">
+                    <span className="text-xs font-semibold text-slate-600 uppercase tracking-wide block">
                       Quick-Add Common Medications:
                     </span>
                     <div className="flex flex-wrap gap-1.5">
@@ -2417,7 +2562,7 @@ export default function PrescriptionsView() {
                   </div>
 
                   {/* Column Headers for Medicine Grid */}
-                  <div className="hidden sm:grid sm:grid-cols-[28px_1fr_125px_85px_115px_120px_36px] items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-[11px] font-bold text-slate-500 uppercase tracking-wider border border-slate-200/80">
+                  <div className="hidden sm:grid sm:grid-cols-[28px_1fr_125px_85px_115px_120px_36px] items-center gap-2 px-3 py-1.5 bg-slate-100 rounded-lg text-xs font-semibold text-slate-500 uppercase tracking-wider border border-slate-200/80">
                     <div className="text-center text-slate-400">#</div>
                     <div>Medicine Name &amp; Strength *</div>
                     <div>Dosage / Freq</div>
@@ -2665,10 +2810,10 @@ export default function PrescriptionsView() {
                 </div>
 
                 {/* Deliver to WhatsApp Toggle */}
-                <div className="info-box-note flex items-center justify-between p-3 bg-white border border-slate-200 rounded-lg shadow-2xs">
+                <div className="info-box-note flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FiSend size={15} className="text-[#254d90] shrink-0" />
-                    <span className="text-xs font-semibold text-slate-700">
+                    <FiSend size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>
                       Send digital prescription copy to patient's WhatsApp immediately
                     </span>
                   </div>
@@ -2676,8 +2821,6 @@ export default function PrescriptionsView() {
                     type="checkbox"
                     checked={formData.send_whatsapp}
                     onChange={(e) => setFormData({ ...formData, send_whatsapp: e.target.checked })}
-                    className="cursor-pointer accent-[#254d90]"
-                    style={{ width: "16px", height: "16px" }}
                   />
                 </div>
               </div>
@@ -2701,17 +2844,16 @@ export default function PrescriptionsView() {
                   <button
                     type="button"
                     onClick={handleCloseCreateModal}
-                    className="btn-cancel text-xs md:text-sm px-4 py-2"
+                    className="btn-cancel"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={saving}
-                    style={{ backgroundColor: "#254d90" }}
-                    className="btn-submit text-xs md:text-sm px-4 py-2 font-bold text-white shadow-xs hover:bg-[#1b396b]"
+                    className="btn-submit"
                   >
-                    <FiCheck size={15} />
+                    <FiCheck size={14} className="shrink-0" />
                     <span>
                       {saving
                         ? "Saving..."
@@ -2733,10 +2875,10 @@ export default function PrescriptionsView() {
 
       {/* VIEW & PRINT MODAL */}
       {selectedRx && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={() => setSelectedRx(null)}>
           <div
             className="modal-content"
-            style={{ maxWidth: "680px", maxHeight: "90vh" }}
+            style={{ maxWidth: "700px", maxHeight: "90vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}

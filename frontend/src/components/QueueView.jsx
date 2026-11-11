@@ -1295,10 +1295,10 @@ export default function QueueView() {
 
       {/* CHECK IN PATIENT MODAL */}
       {isCheckInOpen && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={() => setIsCheckInOpen(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: "520px" }}
+            style={{ maxWidth: "700px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1328,11 +1328,17 @@ export default function QueueView() {
                 <div className="form-group">
                   <label>Select Today's Confirmed Booking *</label>
                   {eligibleAppointments.length === 0 ? (
-                    <p className="text-xs text-slate-500 italic p-3 bg-slate-50 border border-slate-200 rounded-lg m-0">
-                      {appointments.length > 0
-                        ? "All scheduled patients for today are already checked into the queue or completed."
-                        : "No confirmed bookings found for today. Create an appointment first to check in."}
-                    </p>
+                    <div className="p-3 bg-amber-50/70 border border-amber-200/80 rounded-lg text-xs text-amber-900 flex items-start gap-2.5">
+                      <FiAlertCircle size={15} className="text-amber-600 shrink-0 mt-0.5" />
+                      <div>
+                        <div className="font-semibold text-amber-950">No Confirmed Bookings Available</div>
+                        <div className="text-amber-800/90 mt-0.5">
+                          {appointments.length > 0
+                            ? "All scheduled patients for today are already checked into the queue or marked completed."
+                            : "No confirmed bookings found for today. Create an appointment first to check in."}
+                        </div>
+                      </div>
+                    </div>
                   ) : (
                     <select
                       value={selectedApptId}
@@ -1353,10 +1359,10 @@ export default function QueueView() {
                     <button
                       type="button"
                       onClick={() => setIsAddCabinOpen(true)}
-                      className="text-xs text-[#254d90] font-bold hover:underline cursor-pointer flex items-center gap-1"
+                      className="text-xs text-[#254d90] font-semibold hover:underline cursor-pointer flex items-center gap-1 bg-transparent border-0 p-0"
                     >
-                      <FiPlus size={12} />
-                      <span>+ Add New Cabin</span>
+                      <FiPlus size={13} className="text-[#254d90]" />
+                      <span>Add New Cabin</span>
                     </button>
                   </div>
                   {cabins.length === 0 ? (
@@ -1380,9 +1386,11 @@ export default function QueueView() {
                   )}
                 </div>
 
-                <div className="info-box-note">
-                  <FiInfo size={16} style={{ flexShrink: 0 }} />
-                  <span>Next sequential token is assigned automatically upon confirmation.</span>
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Next sequential token is assigned automatically upon confirmation.</span>
+                  </div>
                 </div>
               </div>
 
@@ -1399,7 +1407,7 @@ export default function QueueView() {
                   disabled={checkingIn || eligibleAppointments.length === 0}
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>{checkingIn ? "Assigning Token..." : "Issue Token"}</span>
                 </button>
               </div>
@@ -1410,10 +1418,10 @@ export default function QueueView() {
 
       {/* ADD CABIN MODAL */}
       {isAddCabinOpen && (
-        <div className="modal-overlay">
+        <div className="modal-overlay" onClick={() => setIsAddCabinOpen(false)}>
           <div
             className="modal-content"
-            style={{ maxWidth: "500px" }}
+            style={{ maxWidth: "700px", maxHeight: "92vh" }}
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
@@ -1460,7 +1468,7 @@ export default function QueueView() {
                     <label>Floor / Wing</label>
                     <input
                       type="text"
-                      placeholder="e.g. Ground Floor, 1st Floor"
+                      placeholder="e.g. Ground Floor, 1st Floor, Wing A"
                       value={cabinForm.floor}
                       onChange={(e) => setCabinForm({ ...cabinForm, floor: e.target.value })}
                     />
@@ -1475,6 +1483,16 @@ export default function QueueView() {
                     value={cabinForm.department}
                     onChange={(e) => setCabinForm({ ...cabinForm, department: e.target.value })}
                   />
+                  <span className="text-[11px] text-slate-500 mt-1 block">
+                    Specialty or clinical care designated for this examination room.
+                  </span>
+                </div>
+
+                <div className="info-box-note flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FiInfo size={15} style={{ flexShrink: 0 }} className="text-[#254d90]" />
+                    <span>Cabins appear in the live token queue and doctor consultation assignments.</span>
+                  </div>
                 </div>
               </div>
 
@@ -1491,7 +1509,7 @@ export default function QueueView() {
                   disabled={savingCabin}
                   className="btn-submit"
                 >
-                  <FiCheck size={14} />
+                  <FiCheck size={14} className="shrink-0" />
                   <span>{savingCabin ? "Saving..." : "Add Cabin"}</span>
                 </button>
               </div>

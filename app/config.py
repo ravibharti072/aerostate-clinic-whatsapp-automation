@@ -16,6 +16,11 @@ class Settings(BaseSettings):
     META_GRAPH_VERSION: str = "v21.0"
     META_APP_SECRET: Optional[str] = None
 
+    # Environment & Webhook Security
+    ENVIRONMENT: str = "production"  # "development", "staging", "production"
+    ALLOW_INSECURE_WEBHOOKS: bool = False  # Allowed ONLY in development when explicitly enabled
+    WHATSAPP_SESSION_TIMEOUT_MINUTES: int = 30  # Active conversation session expiration in minutes
+
     # Security & CORS
     SECRET_KEY: str = ""
     ALLOWED_ORIGINS: str = "http://localhost:5173,http://localhost:3000,http://localhost:8000,http://127.0.0.1:5173,http://127.0.0.1:8000"

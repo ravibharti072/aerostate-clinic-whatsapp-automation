@@ -396,15 +396,28 @@ export default function AppointmentsView({ onOpenBookModal }) {
         className="appointments-portal-header"
         actionsBelowOnMobile={true}
         rightAction={
-          <button
-            type="button"
-            onClick={loadData}
-            disabled={loading}
-            className="portal-refresh-btn"
-            title="Refresh Appointments Data"
-          >
-            <FiRotateCw className={`refresh-icon ${loading ? "spinning" : ""}`} size={15} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={loadData}
+              disabled={loading}
+              className="portal-refresh-btn"
+              title="Refresh Appointments Data"
+            >
+              <FiRotateCw className={`refresh-icon ${loading ? "spinning" : ""}`} size={15} />
+            </button>
+            {onOpenBookModal && (
+              <button
+                type="button"
+                onClick={onOpenBookModal}
+                className="portal-action-btn flex items-center gap-1.5"
+                title="Book New Appointment"
+              >
+                <FiPlus size={16} />
+                <span>Book Appointment</span>
+              </button>
+            )}
+          </div>
         }
       />
 

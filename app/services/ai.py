@@ -149,10 +149,17 @@ Patient's Symptoms / Query:
 "{symptoms_text}"
 
 TASK:
-1. Analyze the symptoms described by the patient.
+1. Analyze the symptoms described by the patient solely for doctor routing.
 2. Select the most relevant doctor from the available doctors list above.
-3. If no specific specialist matches (or symptoms are general like fever, weakness, or pain), assign the General Physician or the best fit available.
-4. Provide a warm, reassuring 1-sentence reasoning suitable for patient WhatsApp message.
+3. If no specific specialist matches (or symptoms are general like fever, weakness, or pain), assign the General Physician if available.
+4. If no suitable doctor matches, set doctor_id to null and confidence to "LOW".
+5. Provide a warm, reassuring 1-sentence reasoning for appointment routing.
+
+SAFETY MANDATE:
+- Do NOT diagnose any disease or medical condition.
+- Do NOT recommend or prescribe any medicine, tablet, or dosage.
+- Do NOT state that any symptom is harmless without a clinical examination.
+- Information is strictly for appointment department routing, not diagnostic advice.
 
 Return ONLY a valid JSON object with this exact structure (no markdown fences, no extra text):
 {{
@@ -252,14 +259,13 @@ Return ONLY a valid JSON object with this exact structure (no markdown fences, n
                     "reasoning": "Our General Physician will examine you and provide comprehensive diagnosis and care.",
                 }
 
-        # If clinic has specialized doctors (e.g. only Dental or specific field), assign top active doctor
-        primary_doc = doctors[0]
+        # If no specialist or general physician matched the symptoms among active doctors, do NOT silently select first doctor
         return {
-            "doctor_id": primary_doc.id,
-            "doctor_name": primary_doc.name,
-            "specialization": primary_doc.specialization,
-            "confidence": "MEDIUM",
-            "reasoning": f"We recommend consulting {primary_doc.name} ({primary_doc.specialization}) at our clinic.",
+            "doctor_id": None,
+            "doctor_name": None,
+            "specialization": None,
+            "confidence": "LOW",
+            "reasoning": "Could not identify a matching specialist for the described symptoms.",
         }
 
 

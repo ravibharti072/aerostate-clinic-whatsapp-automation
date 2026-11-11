@@ -415,6 +415,8 @@ class ABDMService:
         patient.abha_number = abha_number
         patient.abha_address = abha_address
         patient.abha_status = "VERIFIED"
+        patient.abha_verification_source = "ABDM_M1"
+        patient.abha_verified_at = datetime.datetime.utcnow()
 
         meta = {}
         if patient.abha_meta:
@@ -445,7 +447,41 @@ class ABDMService:
         patient.abha_number = None
         patient.abha_address = None
         patient.abha_status = "UNLINKED"
+        patient.abha_verification_source = None
+        patient.abha_consented_at = None
+        patient.abha_verified_at = None
         patient.abha_profile_photo = None
+        db.commit()
+        db.refresh(patient)
+        return patient
+
+    def enter_patient_abha(
+        self, db: Session, patient_id: int, abha_number: str, abha_address: Optional[str] = None
+    ) -> Patient:
+        """Records manually entered ABHA details without claiming government verification."""
+        patient = db.query(Patient).filter(Patient.id == patient_id).first()
+        if not patient:
+            raise ValueError(f"Patient with ID {patient_id} not found.")
+
+        patient.abha_number = abha_number
+        if abha_address:
+            patient.abha_address = abha_address
+        patient.abha_status = "ENTERED"
+        patient.abha_verification_source = "MANUAL_ENTRY"
+        db.commit()
+        db.refresh(patient)
+        return patient
+
+    def record_patient_consent(
+        self, db: Session, patient_id: int, consent_purpose: str = "CARE_CONTEXT_LINKAGE"
+    ) -> Patient:
+        """Records patient explicit consent for ABDM health record exchange."""
+        patient = db.query(Patient).filter(Patient.id == patient_id).first()
+        if not patient:
+            raise ValueError(f"Patient with ID {patient_id} not found.")
+
+        patient.abha_status = "CONSENTED"
+        patient.abha_consented_at = datetime.datetime.utcnow()
         db.commit()
         db.refresh(patient)
         return patient

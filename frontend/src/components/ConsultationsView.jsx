@@ -130,6 +130,25 @@ export default function ConsultationsView() {
     chief_complaint: "",
     diagnosis: "Pending Clinical Evaluation",
   });
+  const [startPatientSearch, setStartPatientSearch] = useState("");
+
+  const selectedStartPatient = useMemo(() => {
+    if (!startForm.patient_id) return null;
+    return patients.find((p) => String(p.id) === String(startForm.patient_id));
+  }, [patients, startForm.patient_id]);
+
+  const filteredStartPatients = useMemo(() => {
+    if (!startPatientSearch.trim()) return patients.slice(0, 15);
+    const q = startPatientSearch.toLowerCase().trim();
+    return patients
+      .filter((p) => {
+        const name = (p.name || "").toLowerCase();
+        const phone = (p.phone || "").toLowerCase();
+        const uid = (p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`).toLowerCase();
+        return name.includes(q) || phone.includes(q) || uid.includes(q);
+      })
+      .slice(0, 25);
+  }, [patients, startPatientSearch]);
 
   // Default Standard Vitals (Equal grid space, flexible)
   const DEFAULT_VITAL_FIELDS = [
@@ -2065,7 +2084,10 @@ export default function ConsultationsView() {
               <button
                 type="button"
                 className="modal-close"
-                onClick={() => setIsStartOpen(false)}
+                onClick={() => {
+                  setIsStartOpen(false);
+                  setStartPatientSearch("");
+                }}
               >
                 <FiX size={18} />
               </button>
@@ -2073,19 +2095,136 @@ export default function ConsultationsView() {
             <form onSubmit={handleStartConsultation} style={{ display: "flex", flexDirection: "column", flex: 1, minHeight: 0 }}>
               <div className="modal-body">
                 <div className="form-group">
-                  <label>Select Patient *</label>
-                  <select
-                    required
-                    value={startForm.patient_id}
-                    onChange={(e) => setStartForm({ ...startForm, patient_id: e.target.value })}
-                  >
-                    <option value="">-- Choose Registered Patient --</option>
-                    {patients.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name} ({p.phone}) - {p.patient_uid || `PAT-${String(p.id).padStart(4, '0')}`}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700 m-0">Select Patient *</label>
+                    {selectedStartPatient && (
+                      <span className="text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                        ✓ Patient Selected
+                      </span>
+                    )}
+                  </div>
+
+                  {selectedStartPatient ? (
+                    <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-full bg-[#254d90] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                          {selectedStartPatient.name ? selectedStartPatient.name.charAt(0).toUpperCase() : "P"}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-bold text-slate-900 text-sm">{selectedStartPatient.name}</span>
+                            <span className="font-mono text-xs text-blue-800 bg-blue-100/80 px-2 py-0.5 rounded font-semibold border border-blue-200">
+                              {selectedStartPatient.patient_uid || `PAT-${String(selectedStartPatient.id).padStart(4, "0")}`}
+                            </span>
+                          </div>
+                          <div className="text-xs text-slate-600 mt-0.5 flex items-center gap-2 flex-wrap">
+                            <span>{selectedStartPatient.phone || "No phone recorded"}</span>
+                            {selectedStartPatient.gender && (
+                              <>
+                                <span>•</span>
+                                <span>{selectedStartPatient.gender}{selectedStartPatient.age ? `, ${selectedStartPatient.age} yrs` : ""}</span>
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setStartForm((prev) => ({ ...prev, patient_id: "" }));
+                          setStartPatientSearch("");
+                        }}
+                        className="px-3 py-1.5 rounded-lg text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 border border-slate-300 transition shrink-0 cursor-pointer shadow-sm"
+                        title="Change selected patient"
+                      >
+                        Change
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="border border-slate-300 rounded-xl overflow-hidden bg-white shadow-sm focus-within:border-[#254d90] focus-within:ring-2 focus-within:ring-blue-100 transition">
+                      {/* Live Search Input */}
+                      <div className="p-2.5 flex items-center gap-2 bg-slate-50/80 border-b border-slate-200">
+                        <FiSearch className="text-slate-400 shrink-0" size={16} />
+                        <input
+                          type="text"
+                          placeholder="Type patient name, phone (+91...), or Patient ID (PAT-...)"
+                          value={startPatientSearch}
+                          onChange={(e) => setStartPatientSearch(e.target.value)}
+                          className="w-full text-sm outline-none bg-transparent font-medium text-slate-800 placeholder:text-slate-400"
+                          autoFocus
+                        />
+                        {startPatientSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setStartPatientSearch("")}
+                            className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
+                            title="Clear search"
+                          >
+                            <FiX size={15} />
+                          </button>
+                        )}
+                      </div>
+
+                      {/* Filtered Patient List */}
+                      <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 p-1">
+                        {filteredStartPatients.length === 0 ? (
+                          <div className="py-5 text-center text-xs text-slate-500">
+                            No registered patients found matching <span className="font-semibold text-slate-700">"{startPatientSearch}"</span>
+                          </div>
+                        ) : (
+                          filteredStartPatients.map((p) => (
+                            <div
+                              key={p.id}
+                              onClick={() => {
+                                setStartForm((prev) => ({ ...prev, patient_id: String(p.id) }));
+                                setStartPatientSearch("");
+                              }}
+                              className="p-2.5 rounded-lg flex items-center justify-between cursor-pointer transition hover:bg-blue-50 group"
+                            >
+                              <div className="flex items-center gap-3 min-w-0">
+                                <div className="w-8 h-8 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold text-xs shrink-0 group-hover:bg-[#254d90] group-hover:text-white transition">
+                                  {p.name ? p.name.charAt(0).toUpperCase() : "P"}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    <span className="font-semibold text-slate-900 text-xs sm:text-sm group-hover:text-[#254d90] transition">
+                                      {p.name}
+                                    </span>
+                                    <span className="font-mono text-[11px] text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">
+                                      {p.patient_uid || `PAT-${String(p.id).padStart(4, "0")}`}
+                                    </span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 mt-0.5 flex items-center gap-2">
+                                    <span>{p.phone || "No phone"}</span>
+                                    {p.gender && (
+                                      <>
+                                        <span>•</span>
+                                        <span>{p.gender}{p.age ? `, ${p.age} yrs` : ""}</span>
+                                      </>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                className="px-2.5 py-1 rounded-md text-xs font-semibold text-[#254d90] bg-blue-50 group-hover:bg-[#254d90] group-hover:text-white border border-blue-200 transition shrink-0 ml-2 cursor-pointer"
+                              >
+                                Select
+                              </button>
+                            </div>
+                          ))
+                        )}
+                      </div>
+
+                      {/* Status footer bar */}
+                      <div className="px-3 py-1.5 bg-slate-50 border-t border-slate-200 text-[11px] text-slate-500 flex items-center justify-between">
+                        <span>{patients.length} registered clinic patients</span>
+                        {startPatientSearch && (
+                          <span>Showing {filteredStartPatients.length} matches</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 <div className="form-row">
@@ -2138,7 +2277,10 @@ export default function ConsultationsView() {
               <div className="modal-footer">
                 <button
                   type="button"
-                  onClick={() => setIsStartOpen(false)}
+                  onClick={() => {
+                    setIsStartOpen(false);
+                    setStartPatientSearch("");
+                  }}
                   className="btn-cancel"
                 >
                   Cancel

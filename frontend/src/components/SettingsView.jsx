@@ -361,6 +361,8 @@ export default function SettingsView() {
               ? "Offline Operations & Two-Way Cloud Sync"
               : activeTab === "security"
               ? "Administrator Profile & Security Credentials"
+              : activeTab === "updates"
+              ? "Software Version & Over-The-Air Updates"
               : "Role-Based Access Control (RBAC) Matrix"
           }
           description={
@@ -374,9 +376,11 @@ export default function SettingsView() {
               ? "Local-first offline management, pending WhatsApp outbox queue, and bidirectional database cloud synchronization."
               : activeTab === "security"
               ? "Primary administrative credentials and current authenticated system session telemetry."
+              : activeTab === "updates"
+              ? "Automatic application updates, release telemetry, deployment environment, and binary integrity."
               : "Departmental privilege definitions and feature boundaries enforced across clinical workstations."
           }
-          badgeCount={6}
+          badgeCount={7}
           badgeLabel="categories"
           subBadge="System Configuration"
         />
@@ -474,44 +478,44 @@ export default function SettingsView() {
                     /* VIEW MODE */
                     <div className="clinic-info-grid">
                       <div className="info-tile">
-                        <span className="info-tile-label"><FiHome size={12} /> Legal Clinic Name</span>
+                        <span className="info-tile-label"><FiHome size={13} /> Legal Clinic Name</span>
                         <span className="info-tile-value">{formData.clinic_name || "Not Configured"}</span>
                       </div>
 
                       <div className="info-tile">
-                        <span className="info-tile-label"><FiFileText size={12} /> Registration / NABH License</span>
+                        <span className="info-tile-label"><FiFileText size={13} /> Registration / NABH License</span>
                         <span className="info-tile-value">{formData.clinic_reg_no || "Not Specified"}</span>
                       </div>
 
                       <div className="info-tile">
-                        <span className="info-tile-label"><FiActivity size={12} /> Specialty & Tagline</span>
+                        <span className="info-tile-label"><FiActivity size={13} /> Specialty & Tagline</span>
                         <span className="info-tile-value">{formData.clinic_tagline || "Medical Center & OPD Consultation Services"}</span>
                       </div>
 
                       <div className="info-tile">
-                        <span className="info-tile-label"><FiPhone size={12} /> Helpline & Emergency Phone</span>
+                        <span className="info-tile-label"><FiPhone size={13} /> Helpline & Emergency Phone</span>
                         <span className="info-tile-value">{formData.clinic_phone || "+91 98765 43210"}</span>
                       </div>
 
                       <div className="info-tile full-width">
-                        <span className="info-tile-label"><FiMail size={12} /> Official Clinical Email</span>
+                        <span className="info-tile-label"><FiMail size={13} /> Official Clinical Email</span>
                         <span className="info-tile-value">{formData.clinic_email || "Not Provided"}</span>
                       </div>
 
                       <div className="info-tile full-width">
-                        <span className="info-tile-label"><FiMapPin size={12} /> Registered Physical Address</span>
+                        <span className="info-tile-label"><FiMapPin size={13} /> Registered Physical Address</span>
                         <span className="info-tile-value">{[formData.clinic_address, formData.clinic_city, formData.clinic_state].filter(Boolean).join(", ") || "Not Configured Yet"}</span>
                       </div>
 
                       <div className="info-tile">
-                        <span className="info-tile-label"><FiAward size={12} /> SaaS Subscription Model</span>
+                        <span className="info-tile-label"><FiAward size={13} /> SaaS Subscription Model</span>
                         <span className="info-tile-value text-[#254d90] font-bold">
                           {subscriptionInfo?.subscription_plan || "Monthly Plan"}
                         </span>
                       </div>
 
                       <div className="info-tile">
-                        <span className="info-tile-label"><FiCalendar size={12} /> Subscription Expiry Date</span>
+                        <span className="info-tile-label"><FiCalendar size={13} /> Subscription Expiry Date</span>
                         <span className="info-tile-value font-mono font-bold flex items-center justify-between">
                           <span>{subscriptionInfo?.subscription_expiry_display || subscriptionInfo?.subscription_expiry_date || "25 Nov 2026"}</span>
                           <span className={`text-[10px] font-bold px-2 py-0.5 rounded ${
@@ -528,7 +532,7 @@ export default function SettingsView() {
 
                       <div className="info-tile full-width go-live-tile">
                         <div className="go-live-header">
-                          <span className="info-tile-label bold-blue"><FiClock size={12} /> OPD Operating Schedule & Emergency Readiness</span>
+                          <span className="info-tile-label bold-blue"><FiClock size={13} /> OPD Operating Schedule & Emergency Readiness</span>
                           <span className="go-live-badge">Clinic Active</span>
                         </div>
                         <span className="go-live-value">{formData.clinic_hours || "Not Configured Yet"}</span>
@@ -693,21 +697,21 @@ export default function SettingsView() {
                 <div className="card-body">
                   <div className="clinic-info-grid">
                     <div className="info-tile">
-                      <span className="info-tile-label"><FiAward size={12} /> Active Plan Model</span>
+                      <span className="info-tile-label"><FiAward size={13} /> Active Plan Model</span>
                       <span className="info-tile-value text-[#254d90] font-bold">
                         {subscriptionInfo?.subscription_plan || "Monthly Plan"}
                       </span>
                     </div>
 
                     <div className="info-tile">
-                      <span className="info-tile-label"><FiClock size={12} /> Expiration Date</span>
+                      <span className="info-tile-label"><FiClock size={13} /> Expiration Date</span>
                       <span className="info-tile-value font-mono">
                         {subscriptionInfo?.subscription_expiry_display || subscriptionInfo?.subscription_expiry_date || "25 Nov 2026"}
                       </span>
                     </div>
 
                     <div className="info-tile">
-                      <span className="info-tile-label"><FiActivity size={12} /> Validity Countdown</span>
+                      <span className="info-tile-label"><FiActivity size={13} /> Validity Countdown</span>
                       <span className={`info-tile-value font-bold ${
                         subscriptionInfo?.is_expired
                           ? "text-rose-600"
@@ -722,13 +726,13 @@ export default function SettingsView() {
                     </div>
 
                     <div className="info-tile">
-                      <span className="info-tile-label"><FiShield size={12} /> Multi-Tenant License</span>
+                      <span className="info-tile-label"><FiShield size={13} /> Multi-Tenant License</span>
                       <span className="info-tile-value text-slate-700">Enterprise OPD &amp; Meta WhatsApp</span>
                     </div>
 
                     <div className="info-tile full-width go-live-tile">
                       <div className="go-live-header">
-                        <span className="info-tile-label bold-blue"><FiShield size={12} /> Subscription Management Policy</span>
+                        <span className="info-tile-label bold-blue"><FiShield size={13} /> Subscription Management Policy</span>
                         <span className="go-live-badge">SaaS Managed</span>
                       </div>
                       <span className="go-live-value">
@@ -834,7 +838,7 @@ export default function SettingsView() {
                           onChange={handleChange}
                           placeholder="e.g. 104589239854721"
                         />
-                        <span className="text-[11px] text-slate-500">Obtained from Meta App Dashboard &gt; WhatsApp &gt; API Setup</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">Obtained from Meta App Dashboard &gt; WhatsApp &gt; API Setup</span>
                       </div>
 
                       <div className="settings-form-group">
@@ -856,7 +860,7 @@ export default function SettingsView() {
                             {showToken ? <FiEyeOff size={15} /> : <FiEye size={15} />}
                           </button>
                         </div>
-                        <span className="text-[11px] text-slate-500">System User permanent token with whatsapp_business_messaging permission</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">System User permanent token with whatsapp_business_messaging permission</span>
                       </div>
                     </div>
 
@@ -975,35 +979,35 @@ export default function SettingsView() {
                   /* POLICIES VIEW */
                   <div className="policies-summary-grid">
                     <div className="policy-card">
-                      <span className="policy-label"><FiClock size={12} /> Standard OPD Slot Duration</span>
+                      <span className="policy-label"><FiClock size={13} /> Standard OPD Slot Duration</span>
                       <span className="policy-value">{formData.opd_slot_duration} Minutes</span>
                       <span className="policy-desc">Average consultation time allocated per doctor consultation slot</span>
                       <span className="policy-badge flexible">Configurable</span>
                     </div>
 
                     <div className="policy-card">
-                      <span className="policy-label"><FiActivity size={12} /> Check-in Arrival Grace Period</span>
+                      <span className="policy-label"><FiActivity size={13} /> Check-in Arrival Grace Period</span>
                       <span className="policy-value">{formData.checkin_grace_period} Minutes</span>
                       <span className="policy-desc">Automated priority bump on live queue screen for on-time patient arrivals</span>
                       <span className="policy-badge enabled">Automated</span>
                     </div>
 
                     <div className="policy-card">
-                      <span className="policy-label" style={{ color: '#ef4444' }}><FiAlertCircle size={12} /> Emergency / STAT Queue TAT</span>
+                      <span className="policy-label" style={{ color: '#ef4444' }}><FiAlertCircle size={13} /> Emergency / STAT Queue TAT</span>
                       <span className="policy-value" style={{ color: '#ef4444' }}>&le; {formData.emergency_tat} Minutes</span>
                       <span className="policy-desc">Mandatory immediate physician dispatch target for critical emergency walk-ins</span>
                       <span className="policy-badge warning">STAT Protocol</span>
                     </div>
 
                     <div className="policy-card">
-                      <span className="policy-label"><FiFileText size={12} /> Diagnostic Lab Routine TAT</span>
+                      <span className="policy-label"><FiFileText size={13} /> Diagnostic Lab Routine TAT</span>
                       <span className="policy-value">{formData.lab_tat_standard} Minutes</span>
                       <span className="policy-desc">Target sample-to-result turnaround for routine hematology & biochemistry</span>
                       <span className="policy-badge flexible">Standard TAT</span>
                     </div>
 
                     <div className="policy-card" style={{ gridColumn: '1 / -1' }}>
-                      <span className="policy-label"><FiCheckCircle size={12} /> Complimentary Follow-up Window</span>
+                      <span className="policy-label"><FiCheckCircle size={13} /> Complimentary Follow-up Window</span>
                       <span className="policy-value">{formData.followup_days} Days from Primary Visit</span>
                       <span className="policy-desc">Patients re-consulting within this window are automatically exempt from new OPD registration fees</span>
                       <span className="policy-badge enabled">Patient Benefit</span>
@@ -1024,7 +1028,7 @@ export default function SettingsView() {
                           onChange={handleChange}
                           required
                         />
-                        <span className="text-[11px] text-slate-500">Recommended: 15 minutes for general OPD, 20 for specialties</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">Recommended: 15 minutes for general OPD, 20 for specialties</span>
                       </div>
 
                       <div className="settings-form-group">
@@ -1038,7 +1042,7 @@ export default function SettingsView() {
                           onChange={handleChange}
                           required
                         />
-                        <span className="text-[11px] text-slate-500">Arrivals within this threshold take priority on live queue screen</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">Arrivals within this threshold take priority on live queue screen</span>
                       </div>
 
                       <div className="settings-form-group">
@@ -1052,7 +1056,7 @@ export default function SettingsView() {
                           onChange={handleChange}
                           required
                         />
-                        <span className="text-[11px] text-slate-500">Emergency queue escalation trigger threshold</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">Emergency queue escalation trigger threshold</span>
                       </div>
 
                       <div className="settings-form-group">
@@ -1066,7 +1070,7 @@ export default function SettingsView() {
                           onChange={handleChange}
                           required
                         />
-                        <span className="text-[11px] text-slate-500">Standard benchmark for hematology & routine blood tests</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">Standard benchmark for hematology & routine blood tests</span>
                       </div>
 
                       <div className="settings-form-group span-2">
@@ -1080,7 +1084,7 @@ export default function SettingsView() {
                           onChange={handleChange}
                           required
                         />
-                        <span className="text-[11px] text-slate-500">Zero consultation charges applied during this post-op/post-visit window</span>
+                        <span className="text-xs text-slate-500 font-medium mt-1">Zero consultation charges applied during this post-op/post-visit window</span>
                       </div>
                     </div>
 
@@ -1224,7 +1228,7 @@ export default function SettingsView() {
                 </div>
                 <div>
                   <a href="/staff" className="btn-action-outline">
-                    <FiUsers size={14} /> Manage Staff Accounts
+                    <FiUsers size={16} /> Manage Staff Accounts
                   </a>
                 </div>
               </div>

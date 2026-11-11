@@ -72,6 +72,10 @@ from app.routers import (
     updater,
     abdm,
     payments,
+    notifications,
+    reception,
+    faq,
+    post_appointment,
 )
 
 logging.basicConfig(
@@ -210,6 +214,244 @@ def ensure_abha_columns():
 
 
 
+def ensure_phase3_columns():
+    """Ensures clinic booking/payment configuration columns and non-unique patients.phone index."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            if "clinics" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("clinics")]
+                if "payment_policy" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN payment_policy VARCHAR(30) DEFAULT 'PAY_AT_CLINIC'"))
+                if "advance_amount" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN advance_amount INTEGER DEFAULT 200"))
+                if "advance_percentage" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN advance_percentage INTEGER"))
+                if "require_age" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN require_age BOOLEAN DEFAULT 0"))
+                if "require_gender" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN require_gender BOOLEAN DEFAULT 0"))
+                if "require_reason" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN require_reason BOOLEAN DEFAULT 0"))
+                if "payment_link_expiry_mins" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN payment_link_expiry_mins INTEGER DEFAULT 30"))
+
+            if "patients" in insp.get_table_names():
+                conn.execute(text("DROP INDEX IF EXISTS ix_patients_phone"))
+                conn.execute(text("CREATE INDEX IF NOT EXISTS ix_patients_phone ON patients (phone)"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Phase 3 column initialization note: {e}")
+
+
+def ensure_phase4_columns():
+    """Ensures Phase 4 rescheduling and cancellation policy columns exist in clinics and appointments tables."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            if "clinics" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("clinics")]
+                if "reschedule_cutoff_hours" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reschedule_cutoff_hours INTEGER DEFAULT 2"))
+                if "cancel_cutoff_hours" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN cancel_cutoff_hours INTEGER DEFAULT 2"))
+                if "cancellation_policy_text" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN cancellation_policy_text VARCHAR(255) DEFAULT 'Cancellations allowed up to 2 hours before appointment.'"))
+                if "max_reschedules" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN max_reschedules INTEGER DEFAULT 3"))
+
+            if "appointments" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("appointments")]
+                if "reschedule_count" not in cols:
+                    conn.execute(text("ALTER TABLE appointments ADD COLUMN reschedule_count INTEGER DEFAULT 0"))
+                if "previous_slot" not in cols:
+                    conn.execute(text("ALTER TABLE appointments ADD COLUMN previous_slot VARCHAR(100)"))
+                if "cancelled_at" not in cols:
+                    conn.execute(text("ALTER TABLE appointments ADD COLUMN cancelled_at DATETIME"))
+                if "cancellation_reason" not in cols:
+                    conn.execute(text("ALTER TABLE appointments ADD COLUMN cancellation_reason VARCHAR(255)"))
+                if "cancellation_source" not in cols:
+                    conn.execute(text("ALTER TABLE appointments ADD COLUMN cancellation_source VARCHAR(30)"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Phase 4 column initialization note: {e}")
+
+
+def ensure_phase5_columns():
+    """Ensures Phase 5 notification settings and reminder columns exist in clinics table."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            if "clinics" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("clinics")]
+                if "timezone" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN timezone VARCHAR(50) DEFAULT 'Asia/Kolkata'"))
+                if "reminder_24h_enabled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reminder_24h_enabled BOOLEAN DEFAULT 1"))
+                if "reminder_2h_enabled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reminder_2h_enabled BOOLEAN DEFAULT 1"))
+                if "reminder_template_24h" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reminder_template_24h TEXT"))
+                if "reminder_template_2h" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reminder_template_2h TEXT"))
+                if "notify_booking_confirmed" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN notify_booking_confirmed BOOLEAN DEFAULT 1"))
+                if "notify_booking_rescheduled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN notify_booking_rescheduled BOOLEAN DEFAULT 1"))
+                if "notify_booking_cancelled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN notify_booking_cancelled BOOLEAN DEFAULT 1"))
+                if "notify_payment_confirmed" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN notify_payment_confirmed BOOLEAN DEFAULT 1"))
+                if "notify_payment_failed" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN notify_payment_failed BOOLEAN DEFAULT 1"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Phase 5 column initialization note: {e}")
+
+
+def ensure_phase6_columns():
+    """Ensures Phase 6 reception handover and clinic information columns exist in clinics table."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            if "clinics" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("clinics")]
+                if "google_maps_url" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN google_maps_url TEXT"))
+                if "emergency_contact" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN emergency_contact VARCHAR(255)"))
+                if "departments" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN departments TEXT"))
+                if "facilities" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN facilities TEXT"))
+                if "reception_phone" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_phone VARCHAR(30)"))
+                if "reception_start_time" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_start_time VARCHAR(10) DEFAULT '09:00'"))
+                if "reception_end_time" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_end_time VARCHAR(10) DEFAULT '18:00'"))
+                if "reception_days" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_days VARCHAR(100) DEFAULT 'Monday,Tuesday,Wednesday,Thursday,Friday,Saturday'"))
+                if "reception_message_open" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_message_open TEXT"))
+                if "reception_message_closed" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_message_closed TEXT"))
+                if "reception_expected_wait_mins" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN reception_expected_wait_mins INTEGER"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Phase 6 column initialization note: {e}")
+
+
+def ensure_phase7_columns():
+    """Ensures Phase 7 emergency signs and ABHA verification columns exist."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            if "clinics" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("clinics")]
+                if "emergency_keywords" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN emergency_keywords TEXT"))
+
+            if "patients" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("patients")]
+                if "abha_verification_source" not in cols:
+                    conn.execute(text("ALTER TABLE patients ADD COLUMN abha_verification_source VARCHAR(50)"))
+                if "abha_consented_at" not in cols:
+                    conn.execute(text("ALTER TABLE patients ADD COLUMN abha_consented_at DATETIME"))
+                if "abha_verified_at" not in cols:
+                    conn.execute(text("ALTER TABLE patients ADD COLUMN abha_verified_at DATETIME"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Phase 7 column initialization note: {e}")
+
+
+def ensure_phase8_columns():
+    """Ensures Phase 8 post-appointment, feedback, follow-up, and document access columns exist."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            if "clinics" in insp.get_table_names():
+                cols = [c["name"] for c in insp.get_columns("clinics")]
+                if "feedback_enabled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN feedback_enabled BOOLEAN DEFAULT 1"))
+                if "feedback_template" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN feedback_template TEXT"))
+                if "followup_reminders_enabled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN followup_reminders_enabled BOOLEAN DEFAULT 1"))
+                if "followup_default_days" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN followup_default_days INTEGER DEFAULT 7"))
+                if "followup_template" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN followup_template TEXT"))
+                if "document_access_enabled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN document_access_enabled BOOLEAN DEFAULT 1"))
+                if "document_token_expiry_hours" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN document_token_expiry_hours INTEGER DEFAULT 24"))
+                if "payment_receipt_enabled" not in cols:
+                    conn.execute(text("ALTER TABLE clinics ADD COLUMN payment_receipt_enabled BOOLEAN DEFAULT 1"))
+            conn.commit()
+    except Exception as e:
+        logger.warning(f"Phase 8 column initialization note: {e}")
+
+
+def ensure_session_and_dedup_tables():
+    """Ensures processed_webhook_messages exists and conversation_sessions has multi-tenant (clinic_id, phone) schema."""
+    try:
+        from sqlalchemy import text, inspect
+        with engine.connect() as conn:
+            insp = inspect(engine)
+            tables = insp.get_table_names()
+
+            # 1. Processed Webhook Messages (Idempotency)
+            if "processed_webhook_messages" not in tables:
+                conn.execute(text("""
+                    CREATE TABLE processed_webhook_messages (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        meta_id VARCHAR(120) UNIQUE NOT NULL,
+                        clinic_id INTEGER REFERENCES clinics(id),
+                        phone VARCHAR(30),
+                        message_type VARCHAR(30),
+                        processed_at DATETIME DEFAULT CURRENT_TIMESTAMP
+                    );
+                """))
+                conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_processed_webhook_messages_meta_id ON processed_webhook_messages (meta_id);"))
+                conn.commit()
+
+            # 2. Multi-tenant Conversation Sessions
+            if "conversation_sessions" in tables:
+                cols = [c["name"] for c in insp.get_columns("conversation_sessions")]
+                if "clinic_id" not in cols:
+                    conn.execute(text("""
+                        CREATE TABLE conversation_sessions_v2 (
+                            id INTEGER PRIMARY KEY AUTOINCREMENT,
+                            clinic_id INTEGER NOT NULL DEFAULT 1 REFERENCES clinics(id),
+                            phone VARCHAR(30) NOT NULL,
+                            step VARCHAR(50) DEFAULT 'IDLE',
+                            context_data TEXT DEFAULT '{}',
+                            updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+                            CONSTRAINT uq_clinic_phone_session UNIQUE (clinic_id, phone)
+                        );
+                    """))
+                    conn.execute(text("""
+                        INSERT INTO conversation_sessions_v2 (clinic_id, phone, step, context_data, updated_at)
+                        SELECT 1, phone, step, context_data, updated_at FROM conversation_sessions;
+                    """))
+                    conn.execute(text("DROP TABLE conversation_sessions;"))
+                    conn.execute(text("ALTER TABLE conversation_sessions_v2 RENAME TO conversation_sessions;"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_conversation_sessions_clinic_id ON conversation_sessions (clinic_id);"))
+                    conn.execute(text("CREATE INDEX IF NOT EXISTS ix_conversation_sessions_phone ON conversation_sessions (phone);"))
+                    conn.commit()
+                    logger.info("Migrated conversation_sessions to multi-tenant (clinic_id, phone) schema.")
+    except Exception as e:
+        logger.warning(f"Session / dedup table initialization note: {e}")
+
+
 async def background_sync_worker():
     """Periodically checks connectivity, flushes WhatsApp outbox, and syncs cloud database."""
     from app.services.sync_service import sync_service
@@ -226,6 +468,16 @@ async def background_sync_worker():
         except asyncio.CancelledError:
             break
 
+# Ensure essential tables and schema columns are present on import
+Base.metadata.create_all(bind=engine)
+ensure_session_and_dedup_tables()
+ensure_phase3_columns()
+ensure_phase4_columns()
+ensure_phase5_columns()
+ensure_phase6_columns()
+ensure_phase7_columns()
+ensure_phase8_columns()
+
 async def background_update_checker():
     import asyncio
     if getattr(settings, 'AUTO_UPDATE_ON_STARTUP', True):
@@ -236,31 +488,62 @@ async def background_update_checker():
         except Exception as e:
             logger.debug(f"Background update check note: {e}")
 
+async def background_reminder_worker():
+    """Runs periodic appointment reminder checks in the background (every 10 mins)."""
+    import asyncio
+    while True:
+        try:
+            await asyncio.sleep(600)  # 10 minutes interval
+            from app.services.notifications import notification_service
+            db = SessionLocal()
+            try:
+                notification_service.process_due_reminders(db)
+                notification_service.retry_failed_notifications(db)
+            finally:
+                db.close()
+        except asyncio.CancelledError:
+            break
+        except Exception as e:
+            logger.debug(f"Background reminder worker cycle note: {e}")
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     import asyncio
     # Initialize DB schemas on startup
     Base.metadata.create_all(bind=engine)
+    ensure_session_and_dedup_tables()
+    ensure_phase3_columns()
+    ensure_phase4_columns()
+    ensure_phase5_columns()
+    ensure_phase6_columns()
+    ensure_phase7_columns()
+    ensure_phase8_columns()
     ensure_subscription_columns()
     ensure_abha_columns()
     check_admin_account_status()
     ensure_default_clinic_and_doctors()
     logger.info("Aerostate Clinic WhatsApp Automation backend is ready for production!")
     
-    # Start background auto-sync & auto-update workers
+    # Start background auto-sync, auto-update, and scheduled reminder workers
     sync_worker_task = asyncio.create_task(background_sync_worker())
     update_worker_task = asyncio.create_task(background_update_checker())
+    reminder_worker_task = asyncio.create_task(background_reminder_worker())
     try:
         yield
     finally:
         sync_worker_task.cancel()
         update_worker_task.cancel()
+        reminder_worker_task.cancel()
         try:
             await sync_worker_task
         except asyncio.CancelledError:
             pass
         try:
             await update_worker_task
+        except asyncio.CancelledError:
+            pass
+        try:
+            await reminder_worker_task
         except asyncio.CancelledError:
             pass
 
@@ -321,6 +604,10 @@ app.include_router(sync.router)
 app.include_router(updater.router)
 app.include_router(abdm.router)
 app.include_router(payments.router)
+app.include_router(notifications.router)
+app.include_router(reception.router)
+app.include_router(faq.router)
+app.include_router(post_appointment.router)
 
 
 @app.get("/api/health")
